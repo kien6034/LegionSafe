@@ -107,24 +107,92 @@ Tests should be written in Solidity using Foundry's testing framework (Forge Sta
 - Include integration tests with mock DEX contracts
 - Test reentrancy protection if handling ETH
 
+### Fork Testing
+
+The project includes fork tests for testing integrations with live DeFi protocols.
+
+**Running Fork Tests:**
+
+```bash
+# All fork tests
+make test-fork-all
+
+# KyberSwap integration on BSC
+make test-fork-kyber
+
+# Specific test types
+make test-fork-kyber-setup    # Setup tests only
+make test-fork-kyber-swap     # Swap test (verbose)
+make test-fork-kyber-auth     # Authorization tests
+make test-fork-api            # API-based tests
+
+# With custom RPC
+BSC_RPC=https://your-rpc-url.com make test-fork-kyber
+```
+
+**Fork Test Structure:**
+
+Fork tests are in `test/fork/` and include:
+- **addresses/**: Network-specific addresses (tokens, routers, whales)
+- **helpers/**: Helper libraries for building protocol calldata
+- **interfaces/**: Protocol interfaces (e.g., KyberSwap router)
+- **ForkTestBase.sol**: Base contract with common utilities
+- **LegionSafe_KyberSwap_BSC.t.sol**: Main KyberSwap integration tests
+- **LegionSafe_KyberSwap_API.t.sol**: Template for API-based testing
+
+**Using Real API Data:**
+
+Some tests require real route data from DEX aggregator APIs:
+
+1. Get route from KyberSwap API:
+   ```bash
+   curl "https://aggregator-api.kyberswap.com/bsc/api/v1/routes?tokenIn=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE&tokenOut=0x55d398326f99059fF775485246999027B3197955&amountIn=1000000000000000000"
+   ```
+
+2. Build transaction with route data
+3. Extract calldata and paste into test
+4. Run: `make test-fork-api`
+
+For detailed instructions, see [`test/fork/README.md`](test/fork/README.md).
+
+**Adding New Protocol Tests:**
+
+1. Add protocol addresses to `addresses/` directory
+2. Create interface in `interfaces/`
+3. Add helper if needed in `helpers/`
+4. Create test file extending `ForkTestBase`
+5. Update Makefile with new test command
+
 ## Project Structure
 
 ```
 ├── src/
-│   └── LegionSafe.sol          # Main vault contract
+│   └── LegionSafe.sol                   # Main vault contract
 ├── test/
-│   ├── LegionSafe.t.sol        # Unit tests
-│   └── mocks/                  # Mock contracts for testing
-│       ├── MockERC20.sol       # Mock ERC20 token
-│       └── MockDEX.sol         # Mock DEX for integration tests
+│   ├── LegionSafe.t.sol                 # Unit tests
+│   ├── fork/                            # Fork tests for live protocol integration
+│   │   ├── addresses/
+│   │   │   └── BSC.sol                  # BSC mainnet addresses
+│   │   ├── helpers/
+│   │   │   └── KyberSwapHelper.sol      # KyberSwap calldata builder
+│   │   ├── interfaces/
+│   │   │   └── IKyberSwapRouter.sol     # KyberSwap router interface
+│   │   ├── ForkTestBase.sol             # Base contract for fork tests
+│   │   ├── LegionSafe_KyberSwap_BSC.t.sol  # KyberSwap integration tests
+│   │   ├── LegionSafe_KyberSwap_API.t.sol  # API-based testing template
+│   │   └── README.md                    # Fork testing documentation
+│   └── mocks/                           # Mock contracts for testing
+│       ├── MockERC20.sol                # Mock ERC20 token
+│       └── MockDEX.sol                  # Mock DEX for integration tests
 ├── script/
-│   └── Deploy.s.sol            # Foundry deployment script
-├── dev-scripts/                # Bash scripts for deployment and interaction
-│   └── deploy.sh               # Deploy contract script
-├── lib/                        # Foundry dependencies
-├── foundry.toml                # Foundry configuration
-├── env.sh.example              # Example environment variables template
-└── env.sh                      # Environment variables (DO NOT COMMIT - in .gitignore)
+│   └── Deploy.s.sol                     # Foundry deployment script
+├── dev-scripts/                         # Bash scripts for deployment and interaction
+│   └── deploy.sh                        # Deploy contract script
+├── lib/                                 # Foundry dependencies
+├── Makefile                             # Make commands for building and testing
+├── foundry.toml                         # Foundry configuration
+├── env.sh.example                       # Example environment variables template
+└── env.sh                               # Environment variables (DO NOT COMMIT - in .gitignore)
 ```
 
 ## Working with Dev Scripts
