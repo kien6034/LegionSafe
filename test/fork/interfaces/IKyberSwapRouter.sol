@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.19;
 
 /// @notice Interface for KyberSwap MetaAggregationRouterV2
 /// @dev Simplified interface for testing - only includes swap function
