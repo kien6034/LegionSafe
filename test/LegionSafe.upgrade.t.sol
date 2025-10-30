@@ -44,7 +44,7 @@ contract LegionSafeUpgradeTest is Test {
         proxy = new ERC1967Proxy(address(implementation), initData);
 
         // Cast proxy to LegionSafe interface
-        vault = LegionSafe(address(proxy));
+        vault = LegionSafe(payable(address(proxy)));
 
         // Deploy test token
         token = new MockERC20("Test Token", "TEST");
@@ -190,7 +190,7 @@ contract LegionSafeUpgradeTest is Test {
         vault.upgradeToAndCall(address(v2Impl), initV2Data);
 
         // Cast to V2 interface
-        LegionSafeV2Mock vaultV2 = LegionSafeV2Mock(address(vault));
+        LegionSafeV2Mock vaultV2 = LegionSafeV2Mock(payable(address(vault)));
 
         // Verify V2 functionality
         assertTrue(vaultV2.isV2(), "Not V2");
@@ -220,7 +220,7 @@ contract LegionSafeUpgradeTest is Test {
         vm.prank(owner);
         vault.upgradeToAndCall(address(v2Impl), initV2Data);
 
-        LegionSafeV2Mock vaultV2 = LegionSafeV2Mock(address(vault));
+        LegionSafeV2Mock vaultV2 = LegionSafeV2Mock(payable(address(vault)));
 
         // Verify authorization preserved
         assertTrue(vaultV2.authorizedCalls(address(token), selector));
@@ -263,7 +263,7 @@ contract LegionSafeUpgradeTest is Test {
         vm.prank(owner);
         vault.upgradeToAndCall(address(v2Impl), initV2Data);
 
-        LegionSafeV2Mock vaultV2 = LegionSafeV2Mock(address(vault));
+        LegionSafeV2Mock vaultV2 = LegionSafeV2Mock(payable(address(vault)));
         assertTrue(vaultV2.isV2());
     }
 

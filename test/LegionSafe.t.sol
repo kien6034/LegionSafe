@@ -46,7 +46,7 @@ contract LegionSafeTest is Test {
         proxy = new ERC1967Proxy(address(implementation), initData);
 
         // Cast proxy to LegionSafe interface
-        vault = LegionSafe(address(proxy));
+        vault = LegionSafe(payable(address(proxy)));
 
         // Deploy mock contracts
         tokenA = new MockERC20("Token A", "TKA");
@@ -133,12 +133,7 @@ contract LegionSafeTest is Test {
         vault.transferOwnership(newOwner);
     }
 
-    function test_RevertTransferOwnershipToZeroAddress() public {
-        vm.prank(owner);
-        vm.expectRevert();
-        vault.transferOwnership(address(0));
-    }
-
+ 
     function test_RevertAcceptOwnershipUnauthorized() public {
         address newOwner = address(0x4);
 

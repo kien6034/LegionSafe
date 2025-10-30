@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin-upgradeable/contracts/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin-upgradeable/contracts/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
@@ -19,7 +19,7 @@ contract LegionSafeV2Mock is
     UUPSUpgradeable,
     ReentrancyGuardUpgradeable
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // State variables (must match V1 layout exactly)
     address public operator;
@@ -160,7 +160,7 @@ contract LegionSafeV2Mock is
         if (token == address(0) || to == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
 
-        IERC20Upgradeable(token).safeTransfer(to, amount);
+        IERC20(token).safeTransfer(to, amount);
 
         emit Withdrawn(token, to, amount);
     }
@@ -188,10 +188,10 @@ contract LegionSafeV2Mock is
     function withdrawAllERC20(address token, address to) external onlyOwner nonReentrant {
         if (token == address(0) || to == address(0)) revert InvalidAddress();
 
-        uint256 balance = IERC20Upgradeable(token).balanceOf(address(this));
+        uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance == 0) revert InvalidAmount();
 
-        IERC20Upgradeable(token).safeTransfer(to, balance);
+        IERC20(token).safeTransfer(to, balance);
 
         emit Withdrawn(token, to, balance);
     }
@@ -224,7 +224,7 @@ contract LegionSafeV2Mock is
      * @return The token balance
      */
     function getTokenBalance(address token) external view returns (uint256) {
-        return IERC20Upgradeable(token).balanceOf(address(this));
+        return IERC20(token).balanceOf(address(this));
     }
 
     // ============================================

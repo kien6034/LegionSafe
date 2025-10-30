@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "../../src/LegionSafe.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "./ForkTestBase.sol";
 import "./addresses/BSC.sol";
@@ -27,8 +28,15 @@ contract LegionSafe_KyberSwap_BSC_Test is ForkTestBase {
         owner = makeAddr("owner");
         operator = makeAddr("operator");
 
-        // Deploy LegionSafe
-        safe = new LegionSafe(owner, operator);
+        // Deploy LegionSafe using proxy pattern
+        LegionSafe implementation = new LegionSafe();
+        bytes memory initData = abi.encodeWithSelector(
+            LegionSafe.initialize.selector,
+            owner,
+            operator
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        safe = LegionSafe(payable(address(proxy)));
 
         // Label addresses for better traces
         vm.label(address(safe), "LegionSafe");

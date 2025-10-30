@@ -69,7 +69,7 @@ contract DeployLegionSafe is Script {
         console.log("Verifying initialization...");
 
         // Verify the deployment
-        LegionSafe vault = LegionSafe(address(proxy));
+        LegionSafe vault = LegionSafe(payable(address(proxy)));
         console.log("Owner:", vault.owner());
         console.log("Operator:", vault.operator());
         console.log("");
@@ -131,7 +131,7 @@ contract DeployLegionSafeLocal is Script {
         console.log("");
 
         // Verify
-        LegionSafe vault = LegionSafe(address(proxy));
+        LegionSafe vault = LegionSafe(payable(address(proxy)));
         console.log("Owner:", vault.owner());
         console.log("Operator:", vault.operator());
         console.log("");
@@ -169,7 +169,7 @@ contract UpgradeLegionSafe is Script {
 
         // Step 2: Upgrade the proxy
         console.log("Step 2: Upgrading proxy...");
-        LegionSafe vault = LegionSafe(proxyAddress);
+        LegionSafe vault = LegionSafe(payable(proxyAddress));
         vault.upgradeToAndCall(address(newImplementation), "");
         console.log("Upgrade complete!");
         console.log("");
