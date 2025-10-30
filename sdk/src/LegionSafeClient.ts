@@ -123,9 +123,6 @@ export class LegionSafeClient {
 
     const result = await this.waitForTransaction(hash);
 
-    // Get the return data from the transaction receipt
-    const receipt = await this.publicClient.getTransactionReceipt({ hash });
-
     return {
       ...result,
       returnData: '0x', // Return data is available in logs
@@ -133,7 +130,7 @@ export class LegionSafeClient {
   }
 
   /**
-   * Withdraw ETH from the vault (owner only)
+   * Withdraw ETH from the vault to the owner (owner only)
    *
    * @param params Withdrawal parameters
    * @returns Transaction result
@@ -143,7 +140,7 @@ export class LegionSafeClient {
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: 'withdrawETH',
-      args: [params.recipient, params.amount],
+      args: [params.amount],
       account: this.getAccount(),
       chain: this.walletClient.chain,
     });
@@ -152,17 +149,16 @@ export class LegionSafeClient {
   }
 
   /**
-   * Withdraw all ETH from the vault (owner only)
+   * Withdraw all ETH from the vault to the owner (owner only)
    *
-   * @param recipient Recipient address
    * @returns Transaction result
    */
-  async withdrawAllETH(recipient: Address): Promise<TransactionResult> {
+  async withdrawAllETH(): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: 'withdrawAllETH',
-      args: [recipient],
+      args: [],
       account: this.getAccount(),
       chain: this.walletClient.chain,
     });
@@ -171,7 +167,7 @@ export class LegionSafeClient {
   }
 
   /**
-   * Withdraw ERC20 tokens from the vault (owner only)
+   * Withdraw ERC20 tokens from the vault to the owner (owner only)
    *
    * @param params Withdrawal parameters
    * @returns Transaction result
@@ -181,7 +177,7 @@ export class LegionSafeClient {
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: 'withdrawERC20',
-      args: [params.token, params.recipient, params.amount],
+      args: [params.token, params.amount],
       account: this.getAccount(),
       chain: this.walletClient.chain,
     });
@@ -190,21 +186,17 @@ export class LegionSafeClient {
   }
 
   /**
-   * Withdraw all ERC20 tokens from the vault (owner only)
+   * Withdraw all ERC20 tokens from the vault to the owner (owner only)
    *
    * @param token Token address
-   * @param recipient Recipient address
    * @returns Transaction result
    */
-  async withdrawAllERC20(
-    token: Address,
-    recipient: Address
-  ): Promise<TransactionResult> {
+  async withdrawAllERC20(token: Address): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: 'withdrawAllERC20',
-      args: [token, recipient],
+      args: [token],
       account: this.getAccount(),
       chain: this.walletClient.chain,
     });

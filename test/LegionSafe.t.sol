@@ -329,51 +329,44 @@ contract LegionSafeTest is Test {
 
     function test_WithdrawETH() public {
         uint256 withdrawAmount = 1 ether;
-        address payable recipient = payable(address(0x6));
-        uint256 recipientBalanceBefore = recipient.balance;
+        uint256 ownerBalanceBefore = owner.balance;
 
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Withdrawn(address(0), recipient, withdrawAmount);
-        vault.withdrawETH(recipient, withdrawAmount);
+        emit Withdrawn(address(0), owner, withdrawAmount);
+        vault.withdrawETH(withdrawAmount);
 
-        assertEq(recipient.balance, recipientBalanceBefore + withdrawAmount);
+        assertEq(owner.balance, ownerBalanceBefore + withdrawAmount);
         assertEq(address(vault).balance, 10 ether - withdrawAmount);
     }
 
     function test_WithdrawAllETH() public {
-        address payable recipient = payable(address(0x6));
         uint256 vaultBalance = address(vault).balance;
+        uint256 ownerBalanceBefore = owner.balance;
 
         vm.prank(owner);
-        vault.withdrawAllETH(recipient);
+        vault.withdrawAllETH();
 
-        assertEq(recipient.balance, vaultBalance);
+        assertEq(owner.balance, ownerBalanceBefore + vaultBalance);
         assertEq(address(vault).balance, 0);
     }
 
     function test_RevertWithdrawETHUnauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert();
-        vault.withdrawETH(payable(address(0x6)), 1 ether);
-    }
-
-    function test_RevertWithdrawETHZeroAddress() public {
-        vm.prank(owner);
-        vm.expectRevert(LegionSafe.InvalidAddress.selector);
-        vault.withdrawETH(payable(address(0)), 1 ether);
+        vault.withdrawETH(1 ether);
     }
 
     function test_RevertWithdrawETHZeroAmount() public {
         vm.prank(owner);
         vm.expectRevert(LegionSafe.InvalidAmount.selector);
-        vault.withdrawETH(payable(address(0x6)), 0);
+        vault.withdrawETH(0);
     }
 
     function test_RevertWithdrawETHInsufficientBalance() public {
         vm.prank(owner);
         vm.expectRevert(LegionSafe.InvalidAmount.selector);
-        vault.withdrawETH(payable(address(0x6)), 100 ether);
+        vault.withdrawETH(100 ether);
     }
 
     // ====================================
@@ -382,50 +375,43 @@ contract LegionSafeTest is Test {
 
     function test_WithdrawERC20() public {
         uint256 withdrawAmount = 100 * 10 ** 18;
-        address recipient = address(0x6);
-        uint256 recipientBalanceBefore = tokenA.balanceOf(recipient);
+        uint256 ownerBalanceBefore = tokenA.balanceOf(owner);
 
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
-        emit Withdrawn(address(tokenA), recipient, withdrawAmount);
-        vault.withdrawERC20(address(tokenA), recipient, withdrawAmount);
+        emit Withdrawn(address(tokenA), owner, withdrawAmount);
+        vault.withdrawERC20(address(tokenA), withdrawAmount);
 
-        assertEq(tokenA.balanceOf(recipient), recipientBalanceBefore + withdrawAmount);
+        assertEq(tokenA.balanceOf(owner), ownerBalanceBefore + withdrawAmount);
     }
 
     function test_WithdrawAllERC20() public {
-        address recipient = address(0x6);
         uint256 vaultBalance = tokenA.balanceOf(address(vault));
+        uint256 ownerBalanceBefore = tokenA.balanceOf(owner);
 
         vm.prank(owner);
-        vault.withdrawAllERC20(address(tokenA), recipient);
+        vault.withdrawAllERC20(address(tokenA));
 
-        assertEq(tokenA.balanceOf(recipient), vaultBalance);
+        assertEq(tokenA.balanceOf(owner), ownerBalanceBefore + vaultBalance);
         assertEq(tokenA.balanceOf(address(vault)), 0);
     }
 
     function test_RevertWithdrawERC20Unauthorized() public {
         vm.prank(unauthorized);
         vm.expectRevert();
-        vault.withdrawERC20(address(tokenA), address(0x6), 100 * 10 ** 18);
+        vault.withdrawERC20(address(tokenA), 100 * 10 ** 18);
     }
 
     function test_RevertWithdrawERC20ZeroTokenAddress() public {
         vm.prank(owner);
         vm.expectRevert(LegionSafe.InvalidAddress.selector);
-        vault.withdrawERC20(address(0), address(0x6), 100 * 10 ** 18);
-    }
-
-    function test_RevertWithdrawERC20ZeroRecipientAddress() public {
-        vm.prank(owner);
-        vm.expectRevert(LegionSafe.InvalidAddress.selector);
-        vault.withdrawERC20(address(tokenA), address(0), 100 * 10 ** 18);
+        vault.withdrawERC20(address(0), 100 * 10 ** 18);
     }
 
     function test_RevertWithdrawERC20ZeroAmount() public {
         vm.prank(owner);
         vm.expectRevert(LegionSafe.InvalidAmount.selector);
-        vault.withdrawERC20(address(tokenA), address(0x6), 0);
+        vault.withdrawERC20(address(tokenA), 0);
     }
 
     // ====================================
@@ -564,12 +550,12 @@ contract LegionSafeTest is Test {
 
         // Step 3: Owner withdraws profits
         uint256 profitAmount = 100 * 10 ** 18;
-        address recipient = address(0x7);
+        uint256 ownerBalanceBefore = tokenB.balanceOf(owner);
 
         vm.prank(owner);
-        vault.withdrawERC20(address(tokenB), recipient, profitAmount);
+        vault.withdrawERC20(address(tokenB), profitAmount);
 
-        assertEq(tokenB.balanceOf(recipient), profitAmount);
+        assertEq(tokenB.balanceOf(owner), ownerBalanceBefore + profitAmount);
     }
 
     // ====================================
@@ -582,7 +568,7 @@ contract LegionSafeTest is Test {
         // The modifier should prevent this
 
         vm.prank(owner);
-        vault.withdrawETH(payable(address(this)), 1 ether);
+        vault.withdrawETH(1 ether);
 
         // If we got here without reverting, reentrancy protection is working
         assertTrue(true);

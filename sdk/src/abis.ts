@@ -64,7 +64,6 @@ export const LEGION_SAFE_ABI = [
     type: 'function',
     name: 'withdrawETH',
     inputs: [
-      { name: 'recipient', type: 'address' },
       { name: 'amount', type: 'uint256' }
     ],
     outputs: [],
@@ -73,7 +72,7 @@ export const LEGION_SAFE_ABI = [
   {
     type: 'function',
     name: 'withdrawAllETH',
-    inputs: [{ name: 'recipient', type: 'address' }],
+    inputs: [],
     outputs: [],
     stateMutability: 'nonpayable'
   },
@@ -82,7 +81,6 @@ export const LEGION_SAFE_ABI = [
     name: 'withdrawERC20',
     inputs: [
       { name: 'token', type: 'address' },
-      { name: 'recipient', type: 'address' },
       { name: 'amount', type: 'uint256' }
     ],
     outputs: [],
@@ -92,8 +90,7 @@ export const LEGION_SAFE_ABI = [
     type: 'function',
     name: 'withdrawAllERC20',
     inputs: [
-      { name: 'token', type: 'address' },
-      { name: 'recipient', type: 'address' }
+      { name: 'token', type: 'address' }
     ],
     outputs: [],
     stateMutability: 'nonpayable'

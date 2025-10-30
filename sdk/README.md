@@ -96,17 +96,25 @@ await client.manage({
 
 ### Withdrawals
 
-Owner can withdraw funds from the vault:
+Owner can withdraw funds from the vault to their own address:
 
 ```typescript
-// Withdraw specific amount
+// Withdraw specific amount of ETH to owner
 await client.withdrawETH({
-  recipient: '0xRecipient',
   amount: parseEther('1.0'),
 });
 
-// Withdraw all
-await client.withdrawAllETH('0xRecipient');
+// Withdraw all ETH to owner
+await client.withdrawAllETH();
+
+// Withdraw specific amount of ERC20 tokens to owner
+await client.withdrawERC20({
+  token: '0xTokenAddress',
+  amount: parseUnits('100', 18),
+});
+
+// Withdraw all ERC20 tokens to owner
+await client.withdrawAllERC20('0xTokenAddress');
 ```
 
 ### DEX Integrations

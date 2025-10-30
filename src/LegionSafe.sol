@@ -35,6 +35,7 @@ contract LegionSafe is
     event Managed(address indexed target, uint256 value, bytes data);
     event Withdrawn(address indexed token, address indexed to, uint256 amount);
     event EthReceived(address indexed sender, uint256 amount);
+    event ManagedBatch(address[] targets, bytes[] data, uint256[] values);
 
     // Errors
     error Unauthorized();
@@ -43,6 +44,7 @@ contract LegionSafe is
     error CallFailed(bytes returnData);
     error WithdrawalFailed();
     error InvalidAmount();
+    error InvalidInput();
 
     // Modifiers
     modifier onlyOperator() {
@@ -103,7 +105,7 @@ contract LegionSafe is
      * @param value The amount of ETH to send with the call
      */
     function manage(address target, bytes calldata data, uint256 value)
-        external
+        public
         onlyOperator
         nonReentrant
         returns (bytes memory)
@@ -128,66 +130,89 @@ contract LegionSafe is
         return returnData;
     }
 
+    
     /**
-     * @notice Withdraw ETH from the contract (owner only)
-     * @param to Address to send the ETH to
+     * @notice Execute a batch of managed calls to external contracts (operator only)
+     * @dev Validates authorization before executing the calls
+     * @param targets The contract addresses to call
+     * @param data The calldata to send
+     * @param values The amount of ETH to send with the calls
+     */
+    function manageBatch(address[] calldata targets, bytes[] calldata data, uint256[] calldata values)
+        external
+        onlyOperator
+        nonReentrant
+        returns (bytes[] memory)
+    {
+        if (targets.length != data.length || targets.length != values.length) revert InvalidInput();
+
+        bytes[] memory returnData = new bytes[](targets.length);
+        for (uint256 i = 0; i < targets.length; i++) {
+            returnData[i] = manage(targets[i], data[i], values[i]);
+        }
+
+        emit ManagedBatch(targets, data, values);
+        return returnData;
+    }
+
+    /**
+     * @notice Withdraw ETH from the contract to the owner (owner only)
      * @param amount Amount of ETH to withdraw
      */
-    function withdrawETH(address payable to, uint256 amount) external onlyOwner nonReentrant {
-        if (to == address(0)) revert InvalidAddress();
+    function withdrawETH(uint256 amount) external onlyOwner nonReentrant {
         if (amount == 0) revert InvalidAmount();
         if (amount > address(this).balance) revert InvalidAmount();
 
-        (bool success, ) = to.call{value: amount}("");
+        address payable ownerAddr = payable(owner());
+        (bool success, ) = ownerAddr.call{value: amount}("");
         if (!success) revert WithdrawalFailed();
 
-        emit Withdrawn(address(0), to, amount);
+        emit Withdrawn(address(0), ownerAddr, amount);
     }
 
     /**
-     * @notice Withdraw ERC20 tokens from the contract (owner only)
+     * @notice Withdraw ERC20 tokens from the contract to the owner (owner only)
      * @param token The ERC20 token contract address
-     * @param to Address to send the tokens to
      * @param amount Amount of tokens to withdraw
      */
-    function withdrawERC20(address token, address to, uint256 amount) external onlyOwner nonReentrant {
-        if (token == address(0) || to == address(0)) revert InvalidAddress();
+    function withdrawERC20(address token, uint256 amount) external onlyOwner nonReentrant {
+        if (token == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
 
-        IERC20(token).safeTransfer(to, amount);
+        address ownerAddr = owner();
+        IERC20(token).safeTransfer(ownerAddr, amount);
 
-        emit Withdrawn(token, to, amount);
+        emit Withdrawn(token, ownerAddr, amount);
     }
 
     /**
-     * @notice Withdraw all ETH from the contract (owner only)
-     * @param to Address to send the ETH to
+     * @notice Withdraw all ETH from the contract to the owner (owner only)
      */
-    function withdrawAllETH(address payable to) external onlyOwner nonReentrant {
-        if (to == address(0)) revert InvalidAddress();
+    function withdrawAllETH() external onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
         if (balance == 0) revert InvalidAmount();
 
-        (bool success, ) = to.call{value: balance}("");
+        address payable ownerAddr = payable(owner());
+        (bool success, ) = ownerAddr.call{value: balance}("");
         if (!success) revert WithdrawalFailed();
 
-        emit Withdrawn(address(0), to, balance);
+        emit Withdrawn(address(0), ownerAddr, balance);
     }
 
     /**
-     * @notice Withdraw all ERC20 tokens from the contract (owner only)
+     * @notice Withdraw all ERC20 tokens from the contract to the owner (owner only)
      * @param token The ERC20 token contract address
-     * @param to Address to send the tokens to
      */
-    function withdrawAllERC20(address token, address to) external onlyOwner nonReentrant {
-        if (token == address(0) || to == address(0)) revert InvalidAddress();
+    function withdrawAllERC20(address token) external onlyOwner nonReentrant {
+        if (token == address(0)) revert InvalidAddress();
 
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance == 0) revert InvalidAmount();
 
-        IERC20(token).safeTransfer(to, balance);
+        address ownerAddr = owner();
+        IERC20(token).safeTransfer(ownerAddr, balance);
 
-        emit Withdrawn(token, to, balance);
+        emit Withdrawn(token, ownerAddr, balance);
     }
 
     /**

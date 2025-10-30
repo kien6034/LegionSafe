@@ -37,8 +37,6 @@ interface ManageCallParams {
  * Parameters for withdrawing ETH
  */
 interface WithdrawETHParams {
-    /** Recipient address */
-    recipient: Address;
     /** Amount to withdraw in wei */
     amount: bigint;
 }
@@ -48,8 +46,6 @@ interface WithdrawETHParams {
 interface WithdrawERC20Params {
     /** Token contract address */
     token: Address;
-    /** Recipient address */
-    recipient: Address;
     /** Amount to withdraw (in token's smallest unit) */
     amount: bigint;
 }
@@ -140,34 +136,32 @@ declare class LegionSafeClient {
         returnData: `0x${string}`;
     }>;
     /**
-     * Withdraw ETH from the vault (owner only)
+     * Withdraw ETH from the vault to the owner (owner only)
      *
      * @param params Withdrawal parameters
      * @returns Transaction result
      */
     withdrawETH(params: WithdrawETHParams): Promise<TransactionResult>;
     /**
-     * Withdraw all ETH from the vault (owner only)
+     * Withdraw all ETH from the vault to the owner (owner only)
      *
-     * @param recipient Recipient address
      * @returns Transaction result
      */
-    withdrawAllETH(recipient: Address): Promise<TransactionResult>;
+    withdrawAllETH(): Promise<TransactionResult>;
     /**
-     * Withdraw ERC20 tokens from the vault (owner only)
+     * Withdraw ERC20 tokens from the vault to the owner (owner only)
      *
      * @param params Withdrawal parameters
      * @returns Transaction result
      */
     withdrawERC20(params: WithdrawERC20Params): Promise<TransactionResult>;
     /**
-     * Withdraw all ERC20 tokens from the vault (owner only)
+     * Withdraw all ERC20 tokens from the vault to the owner (owner only)
      *
      * @param token Token address
-     * @param recipient Recipient address
      * @returns Transaction result
      */
-    withdrawAllERC20(token: Address, recipient: Address): Promise<TransactionResult>;
+    withdrawAllERC20(token: Address): Promise<TransactionResult>;
     /**
      * Get the vault's native token balance
      *
@@ -291,9 +285,6 @@ declare const LEGION_SAFE_ABI: readonly [{
     readonly type: "function";
     readonly name: "withdrawETH";
     readonly inputs: readonly [{
-        readonly name: "recipient";
-        readonly type: "address";
-    }, {
         readonly name: "amount";
         readonly type: "uint256";
     }];
@@ -302,10 +293,7 @@ declare const LEGION_SAFE_ABI: readonly [{
 }, {
     readonly type: "function";
     readonly name: "withdrawAllETH";
-    readonly inputs: readonly [{
-        readonly name: "recipient";
-        readonly type: "address";
-    }];
+    readonly inputs: readonly [];
     readonly outputs: readonly [];
     readonly stateMutability: "nonpayable";
 }, {
@@ -313,9 +301,6 @@ declare const LEGION_SAFE_ABI: readonly [{
     readonly name: "withdrawERC20";
     readonly inputs: readonly [{
         readonly name: "token";
-        readonly type: "address";
-    }, {
-        readonly name: "recipient";
         readonly type: "address";
     }, {
         readonly name: "amount";
@@ -328,9 +313,6 @@ declare const LEGION_SAFE_ABI: readonly [{
     readonly name: "withdrawAllERC20";
     readonly inputs: readonly [{
         readonly name: "token";
-        readonly type: "address";
-    }, {
-        readonly name: "recipient";
         readonly type: "address";
     }];
     readonly outputs: readonly [];

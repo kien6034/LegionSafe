@@ -135,65 +135,63 @@ contract LegionSafeV2Mock is
     }
 
     /**
-     * @notice Withdraw ETH from the contract (owner only)
-     * @param to Address to send the ETH to
+     * @notice Withdraw ETH from the contract to the owner (owner only)
      * @param amount Amount of ETH to withdraw
      */
-    function withdrawETH(address payable to, uint256 amount) external onlyOwner nonReentrant {
-        if (to == address(0)) revert InvalidAddress();
+    function withdrawETH(uint256 amount) external onlyOwner nonReentrant {
         if (amount == 0) revert InvalidAmount();
         if (amount > address(this).balance) revert InvalidAmount();
 
-        (bool success, ) = to.call{value: amount}("");
+        address payable ownerAddr = payable(owner());
+        (bool success, ) = ownerAddr.call{value: amount}("");
         if (!success) revert WithdrawalFailed();
 
-        emit Withdrawn(address(0), to, amount);
+        emit Withdrawn(address(0), ownerAddr, amount);
     }
 
     /**
-     * @notice Withdraw ERC20 tokens from the contract (owner only)
+     * @notice Withdraw ERC20 tokens from the contract to the owner (owner only)
      * @param token The ERC20 token contract address
-     * @param to Address to send the tokens to
      * @param amount Amount of tokens to withdraw
      */
-    function withdrawERC20(address token, address to, uint256 amount) external onlyOwner nonReentrant {
-        if (token == address(0) || to == address(0)) revert InvalidAddress();
+    function withdrawERC20(address token, uint256 amount) external onlyOwner nonReentrant {
+        if (token == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
 
-        IERC20(token).safeTransfer(to, amount);
+        address ownerAddr = owner();
+        IERC20(token).safeTransfer(ownerAddr, amount);
 
-        emit Withdrawn(token, to, amount);
+        emit Withdrawn(token, ownerAddr, amount);
     }
 
     /**
-     * @notice Withdraw all ETH from the contract (owner only)
-     * @param to Address to send the ETH to
+     * @notice Withdraw all ETH from the contract to the owner (owner only)
      */
-    function withdrawAllETH(address payable to) external onlyOwner nonReentrant {
-        if (to == address(0)) revert InvalidAddress();
+    function withdrawAllETH() external onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
         if (balance == 0) revert InvalidAmount();
 
-        (bool success, ) = to.call{value: balance}("");
+        address payable ownerAddr = payable(owner());
+        (bool success, ) = ownerAddr.call{value: balance}("");
         if (!success) revert WithdrawalFailed();
 
-        emit Withdrawn(address(0), to, balance);
+        emit Withdrawn(address(0), ownerAddr, balance);
     }
 
     /**
-     * @notice Withdraw all ERC20 tokens from the contract (owner only)
+     * @notice Withdraw all ERC20 tokens from the contract to the owner (owner only)
      * @param token The ERC20 token contract address
-     * @param to Address to send the tokens to
      */
-    function withdrawAllERC20(address token, address to) external onlyOwner nonReentrant {
-        if (token == address(0) || to == address(0)) revert InvalidAddress();
+    function withdrawAllERC20(address token) external onlyOwner nonReentrant {
+        if (token == address(0)) revert InvalidAddress();
 
         uint256 balance = IERC20(token).balanceOf(address(this));
         if (balance == 0) revert InvalidAmount();
 
-        IERC20(token).safeTransfer(to, balance);
+        address ownerAddr = owner();
+        IERC20(token).safeTransfer(ownerAddr, balance);
 
-        emit Withdrawn(token, to, balance);
+        emit Withdrawn(token, ownerAddr, balance);
     }
 
     /**

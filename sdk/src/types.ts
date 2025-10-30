@@ -40,8 +40,6 @@ export interface ManageCallParams {
  * Parameters for withdrawing ETH
  */
 export interface WithdrawETHParams {
-  /** Recipient address */
-  recipient: Address;
   /** Amount to withdraw in wei */
   amount: bigint;
 }
@@ -52,8 +50,6 @@ export interface WithdrawETHParams {
 export interface WithdrawERC20Params {
   /** Token contract address */
   token: Address;
-  /** Recipient address */
-  recipient: Address;
   /** Amount to withdraw (in token's smallest unit) */
   amount: bigint;
 }
