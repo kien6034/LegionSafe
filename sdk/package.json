@@ -15,7 +15,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
@@ -31,10 +32,21 @@
     "trading",
     "automation",
     "ethereum",
-    "bsc"
+    "bsc",
+    "web3",
+    "viem",
+    "kyberswap"
   ],
-  "author": "",
+  "author": "LegionSafe",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/legionsafe"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/legionsafe/issues"
+  },
+  "homepage": "https://github.com/your-org/legionsafe#readme",
   "peerDependencies": {
     "viem": "^2.0.0"
   },

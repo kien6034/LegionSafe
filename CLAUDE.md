@@ -97,6 +97,75 @@ The main contract should implement:
 - Consider implementing allowlist/blocklist patterns for target contracts
 - Owner withdrawal should support both ETH and ERC20 tokens
 
+## SDK
+
+The project includes a TypeScript SDK for interacting with LegionSafe contracts.
+
+### SDK Location
+
+`sdk/` - TypeScript SDK package
+
+### SDK Usage
+
+```typescript
+import { LegionSafeClient } from '@legionsafe/sdk';
+
+const client = new LegionSafeClient({
+  safeAddress: '0x...',
+  walletClient: walletClient,
+  publicClient: publicClient,
+});
+
+// Authorize a call
+await client.authorizeCall({
+  target: '0xRouter',
+  selector: '0x12345678',
+  authorized: true,
+});
+
+// Execute via manage()
+await client.manage({
+  target: '0xTarget',
+  data: '0x...',
+  value: 0n,
+});
+```
+
+### SDK Development
+
+```bash
+# Navigate to SDK directory
+cd sdk
+
+# Install dependencies
+npm install
+
+# Build SDK
+npm run build
+
+# Run type checking
+npm run typecheck
+
+# Run tests
+npm test
+```
+
+### SDK Documentation
+
+- `sdk/README.md` - SDK overview and quick start
+- `sdk/docs/API.md` - Complete API reference
+- `sdk/examples/` - Usage examples
+
+### Publishing SDK
+
+```bash
+cd sdk
+npm run build
+npm publish
+```
+
+The SDK is published as `@legionsafe/sdk` on npm.
+
 ## Testing Strategy
 
 Tests should be written in Solidity using Foundry's testing framework (Forge Standard Library):
