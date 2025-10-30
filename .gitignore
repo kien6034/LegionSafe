@@ -2,6 +2,9 @@
 cache/
 out/
 
+# Backup files
+*.backup
+
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/
@@ -10,6 +13,8 @@ out/
 # Docs (except plans)
 docs/*
 !docs/plans/
+
+docs
 
 # Dotenv file
 .env

@@ -9,13 +9,11 @@ import "@openzeppelin-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 
 /**
- * @title LegionSafe
- * @notice A secure vault for managing crypto meme trading automation with role-based access control
- * @dev Implements UUPS upgradeability with two-step ownership transfer
- *      - Operator: Can trigger arbitrary payloads through manage()
- *      - Owner: Has exclusive rights to withdraw funds and authorize upgrades
+ * @title LegionSafeV2Mock
+ * @notice Mock V2 implementation for testing upgrade functionality
+ * @dev Adds new functions to demonstrate successful upgrade while preserving state
  */
-contract LegionSafe is
+contract LegionSafeV2Mock is
     Initializable,
     Ownable2StepUpgradeable,
     UUPSUpgradeable,
@@ -23,20 +21,24 @@ contract LegionSafe is
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // State variables
+    // State variables (must match V1 layout exactly)
     address public operator;
-
-    // Mapping to track authorized function signatures for specific target contracts
     mapping(address => mapping(bytes4 => bool)) public authorizedCalls;
 
-    // Events
+    // New state variable for V2
+    string public version;
+
+    // Events from V1
     event OperatorChanged(address indexed previousOperator, address indexed newOperator);
     event CallAuthorized(address indexed target, bytes4 indexed selector, bool authorized);
     event Managed(address indexed target, uint256 value, bytes data);
     event Withdrawn(address indexed token, address indexed to, uint256 amount);
     event EthReceived(address indexed sender, uint256 amount);
 
-    // Errors
+    // New event for V2
+    event VersionSet(string version);
+
+    // Errors from V1
     error Unauthorized();
     error InvalidAddress();
     error CallNotAuthorized();
@@ -56,20 +58,27 @@ contract LegionSafe is
     }
 
     /**
-     * @notice Initialize the LegionSafe contract
-     * @dev Replaces constructor for proxy pattern. Can only be called once.
-     * @param _owner Address of the owner who can withdraw funds and authorize upgrades
+     * @notice Initialize the contract (V1 initialization)
      * @param _operator Address of the operator who can execute trades
      */
-    function initialize(address _owner, address _operator) public initializer {
-        if (_owner == address(0) || _operator == address(0)) revert InvalidAddress();
+    function initialize(address _operator) public reinitializer(1) {
+        if (_operator == address(0)) revert InvalidAddress();
 
-        __Ownable_init(_owner);
+        __Ownable_init(msg.sender);
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
 
         operator = _operator;
         emit OperatorChanged(address(0), _operator);
+    }
+
+    /**
+     * @notice Initialize V2 specific features
+     * @dev This can be called during upgrade via upgradeToAndCall
+     */
+    function initializeV2() public reinitializer(2) {
+        version = "2.0.0";
+        emit VersionSet(version);
     }
 
     /**
@@ -111,13 +120,10 @@ contract LegionSafe is
         if (target == address(0)) revert InvalidAddress();
         if (data.length < 4) revert CallNotAuthorized();
 
-        // Extract function selector from calldata
         bytes4 selector = bytes4(data[:4]);
 
-        // Check if this call is authorized
         if (!authorizedCalls[target][selector]) revert CallNotAuthorized();
 
-        // Execute the call
         (bool success, bytes memory returnData) = target.call{value: value}(data);
 
         if (!success) {
@@ -221,9 +227,28 @@ contract LegionSafe is
         return IERC20Upgradeable(token).balanceOf(address(this));
     }
 
+    // ============================================
+    // V2 NEW FUNCTIONS
+    // ============================================
+
+    /**
+     * @notice Get the contract version (new in V2)
+     * @return The version string
+     */
+    function getVersion() external view returns (string memory) {
+        return version;
+    }
+
+    /**
+     * @notice Check if the contract has been upgraded to V2
+     * @return True if upgraded to V2
+     */
+    function isV2() external pure returns (bool) {
+        return true;
+    }
+
     /**
      * @notice Authorize upgrade to new implementation (UUPS pattern)
-     * @dev Only owner can authorize upgrades. This is called by upgradeToAndCall.
      * @param newImplementation Address of new implementation contract
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

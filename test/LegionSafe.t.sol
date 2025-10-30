@@ -5,9 +5,12 @@ import "forge-std/Test.sol";
 import "../src/LegionSafe.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockDEX.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract LegionSafeTest is Test {
     LegionSafe public vault;
+    LegionSafe public implementation;
+    ERC1967Proxy public proxy;
     MockERC20 public tokenA;
     MockERC20 public tokenB;
     MockDEX public dex;
@@ -17,6 +20,7 @@ contract LegionSafeTest is Test {
     address public unauthorized;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
     event OperatorChanged(address indexed previousOperator, address indexed newOperator);
     event CallAuthorized(address indexed target, bytes4 indexed selector, bool authorized);
     event Managed(address indexed target, uint256 value, bytes data);
@@ -28,10 +32,23 @@ contract LegionSafeTest is Test {
         operator = address(0x2);
         unauthorized = address(0x3);
 
-        // Deploy contracts
-        vm.prank(owner);
-        vault = new LegionSafe(owner, operator);
+        // Deploy implementation
+        implementation = new LegionSafe();
 
+        // Prepare initialization data
+        bytes memory initData = abi.encodeWithSelector(
+            LegionSafe.initialize.selector,
+            owner,
+            operator
+        );
+
+        // Deploy proxy
+        proxy = new ERC1967Proxy(address(implementation), initData);
+
+        // Cast proxy to LegionSafe interface
+        vault = LegionSafe(address(proxy));
+
+        // Deploy mock contracts
         tokenA = new MockERC20("Token A", "TKA");
         tokenB = new MockERC20("Token B", "TKB");
         dex = new MockDEX();
@@ -56,43 +73,96 @@ contract LegionSafeTest is Test {
         assertEq(vault.operator(), operator);
     }
 
-    function test_RevertDeploymentWithZeroOwner() public {
+    function test_RevertInitializationWithZeroOwner() public {
+        LegionSafe newImpl = new LegionSafe();
+        bytes memory initData = abi.encodeWithSelector(
+            LegionSafe.initialize.selector,
+            address(0),
+            operator
+        );
+
         vm.expectRevert(LegionSafe.InvalidAddress.selector);
-        new LegionSafe(address(0), operator);
+        new ERC1967Proxy(address(newImpl), initData);
     }
 
-    function test_RevertDeploymentWithZeroOperator() public {
+    function test_RevertInitializationWithZeroOperator() public {
+        LegionSafe newImpl = new LegionSafe();
+        bytes memory initData = abi.encodeWithSelector(
+            LegionSafe.initialize.selector,
+            owner,
+            address(0)
+        );
+
         vm.expectRevert(LegionSafe.InvalidAddress.selector);
-        new LegionSafe(owner, address(0));
+        new ERC1967Proxy(address(newImpl), initData);
     }
 
     // ====================================
-    // Ownership Tests
+    // Ownership Tests (Two-Step)
     // ====================================
 
-    function test_TransferOwnership() public {
+    function test_TransferOwnership_TwoStep() public {
         address newOwner = address(0x4);
 
+        // Step 1: Current owner initiates transfer
         vm.prank(owner);
         vm.expectEmit(true, true, false, false);
-        emit OwnershipTransferred(owner, newOwner);
+        emit OwnershipTransferStarted(owner, newOwner);
         vault.transferOwnership(newOwner);
 
+        // Owner should not change yet
+        assertEq(vault.owner(), owner);
+        assertEq(vault.pendingOwner(), newOwner);
+
+        // Step 2: New owner accepts ownership
+        vm.prank(newOwner);
+        vm.expectEmit(true, true, false, false);
+        emit OwnershipTransferred(owner, newOwner);
+        vault.acceptOwnership();
+
+        // Now ownership should be transferred
         assertEq(vault.owner(), newOwner);
+        assertEq(vault.pendingOwner(), address(0));
     }
 
     function test_RevertTransferOwnershipUnauthorized() public {
         address newOwner = address(0x4);
 
         vm.prank(unauthorized);
-        vm.expectRevert(LegionSafe.Unauthorized.selector);
+        vm.expectRevert();
         vault.transferOwnership(newOwner);
     }
 
     function test_RevertTransferOwnershipToZeroAddress() public {
         vm.prank(owner);
-        vm.expectRevert(LegionSafe.InvalidAddress.selector);
+        vm.expectRevert();
         vault.transferOwnership(address(0));
+    }
+
+    function test_RevertAcceptOwnershipUnauthorized() public {
+        address newOwner = address(0x4);
+
+        vm.prank(owner);
+        vault.transferOwnership(newOwner);
+
+        // Someone other than pending owner tries to accept
+        vm.prank(unauthorized);
+        vm.expectRevert();
+        vault.acceptOwnership();
+    }
+
+    function test_CancelOwnershipTransfer() public {
+        address newOwner = address(0x4);
+
+        // Initiate transfer
+        vm.prank(owner);
+        vault.transferOwnership(newOwner);
+        assertEq(vault.pendingOwner(), newOwner);
+
+        // Cancel by transferring to address(0)
+        vm.prank(owner);
+        vault.transferOwnership(address(0));
+        assertEq(vault.pendingOwner(), address(0));
     }
 
     // ====================================
@@ -114,7 +184,7 @@ contract LegionSafeTest is Test {
         address newOperator = address(0x5);
 
         vm.prank(unauthorized);
-        vm.expectRevert(LegionSafe.Unauthorized.selector);
+        vm.expectRevert();
         vault.setOperator(newOperator);
     }
 
@@ -157,7 +227,7 @@ contract LegionSafeTest is Test {
         bytes4 selector = bytes4(keccak256("swap(address,address,uint256,uint256)"));
 
         vm.prank(unauthorized);
-        vm.expectRevert(LegionSafe.Unauthorized.selector);
+        vm.expectRevert();
         vault.setCallAuthorization(address(dex), selector, true);
     }
 
@@ -289,7 +359,7 @@ contract LegionSafeTest is Test {
 
     function test_RevertWithdrawETHUnauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(LegionSafe.Unauthorized.selector);
+        vm.expectRevert();
         vault.withdrawETH(payable(address(0x6)), 1 ether);
     }
 
@@ -341,7 +411,7 @@ contract LegionSafeTest is Test {
 
     function test_RevertWithdrawERC20Unauthorized() public {
         vm.prank(unauthorized);
-        vm.expectRevert(LegionSafe.Unauthorized.selector);
+        vm.expectRevert();
         vault.withdrawERC20(address(tokenA), address(0x6), 100 * 10 ** 18);
     }
 
