@@ -25,11 +25,12 @@ contract LegionSafe is
 
     // Constants
     bytes4 public constant APPROVE_SELECTOR = 0x095ea7b3; // approve(address,uint256)
-    uint256 public constant SPENDING_WINDOW_DURATION = 6 hours;
+    uint256 public constant DEFAULT_WINDOW_DURATION = 6 hours;
 
     // Structs
     struct SpendingLimit {
-        uint256 limitPerWindow;    // Max amount per 6-hour window
+        uint256 limitPerWindow;    // Max amount per window
+        uint256 windowDuration;    // Duration of spending window (e.g., 6 hours)
         uint256 spent;              // Amount spent in current window
         uint256 lastWindowStart;    // Start of the window when last spend occurred
     }
@@ -178,13 +179,18 @@ contract LegionSafe is
     /**
      * @notice Set spending limit for a token
      * @param token The token address (use address(0) for native token)
-     * @param limitPerWindow Maximum amount that can be spent per 6-hour window
+     * @param limitPerWindow Maximum amount that can be spent per window
+     * @param windowDuration Duration of the spending window in seconds (use 0 for default 6 hours)
      */
-    function setSpendingLimit(address token, uint256 limitPerWindow) external onlyOwner {
+    function setSpendingLimit(address token, uint256 limitPerWindow, uint256 windowDuration) external onlyOwner {
+        uint256 duration = windowDuration == 0 ? DEFAULT_WINDOW_DURATION : windowDuration;
+        uint256 windowStart = (block.timestamp / duration) * duration;
+        
         spendingLimits[token] = SpendingLimit({
             limitPerWindow: limitPerWindow,
+            windowDuration: duration,
             spent: 0,
-            lastWindowStart: (block.timestamp / SPENDING_WINDOW_DURATION) * SPENDING_WINDOW_DURATION
+            lastWindowStart: windowStart
         });
         emit SpendingLimitSet(token, limitPerWindow);
     }
@@ -201,17 +207,17 @@ contract LegionSafe is
     ) {
         SpendingLimit storage limit = spendingLimits[token];
 
-        if (limit.limitPerWindow == 0) {
+        if (limit.limitPerWindow == 0 || limit.windowDuration == 0) {
             return (0, 0); // No limit configured
         }
 
-        uint256 currentWindowStart = (block.timestamp / SPENDING_WINDOW_DURATION) * SPENDING_WINDOW_DURATION;
+        uint256 currentWindowStart = (block.timestamp / limit.windowDuration) * limit.windowDuration;
 
         // If new window, full limit available
         if (currentWindowStart > limit.lastWindowStart) {
             return (
                 limit.limitPerWindow,
-                currentWindowStart + SPENDING_WINDOW_DURATION
+                currentWindowStart + limit.windowDuration
             );
         }
 
@@ -219,7 +225,7 @@ contract LegionSafe is
         remaining = limit.limitPerWindow > limit.spent
             ? limit.limitPerWindow - limit.spent
             : 0;
-        windowEndsAt = currentWindowStart + SPENDING_WINDOW_DURATION;
+        windowEndsAt = currentWindowStart + limit.windowDuration;
 
         return (remaining, windowEndsAt);
     }
@@ -399,10 +405,10 @@ contract LegionSafe is
     function _checkAndUpdateLimit(address token, uint256 amount) internal {
         SpendingLimit storage limit = spendingLimits[token];
 
-        if (limit.limitPerWindow == 0) return; // No limit configured
+        if (limit.limitPerWindow == 0 || limit.windowDuration == 0) return; // No limit configured
 
-        // Calculate current window start (aligned to 6-hour blocks)
-        uint256 currentWindowStart = (block.timestamp / SPENDING_WINDOW_DURATION) * SPENDING_WINDOW_DURATION;
+        // Calculate current window start (aligned to window duration blocks)
+        uint256 currentWindowStart = (block.timestamp / limit.windowDuration) * limit.windowDuration;
 
         // Reset if we're in a new window
         if (currentWindowStart > limit.lastWindowStart) {

@@ -60,6 +60,8 @@ contract LegionSafeManageTest is Test {
     function test_ManageSuccessfulCall() public {
         bytes4 selector = bytes4(keccak256("swap(address,address,uint256,uint256)"));
         bytes4 approveSelector = bytes4(keccak256("approve(address,uint256)"));
+
+        
         vm.prank(owner);
         vault.setCallAuthorization(address(dex), selector, true);
 
@@ -372,10 +374,22 @@ contract LegionSafeManageTest is Test {
         uint256 limit = 100e18;
 
         vm.prank(owner);
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0); // 0 = use default
 
-        (uint256 limitPerWindow, , ) = vault.spendingLimits(address(tokenA));
+        (uint256 limitPerWindow, , , ) = vault.spendingLimits(address(tokenA));
         assertEq(limitPerWindow, limit);
+    }
+
+    function test_SetSpendingLimitWithCustomWindow() public {
+        uint256 limit = 200e18;
+        uint256 customWindow = 1 hours;
+
+        vm.prank(owner);
+        vault.setSpendingLimit(address(tokenA), limit, customWindow);
+
+        (uint256 limitPerWindow, uint256 windowDuration, , ) = vault.spendingLimits(address(tokenA));
+        assertEq(limitPerWindow, limit);
+        assertEq(windowDuration, customWindow);
     }
 
     function test_GetRemainingLimit() public {
@@ -383,7 +397,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vm.stopPrank();
 
         (uint256 remaining, uint256 windowEndsAt) = vault.getRemainingLimit(address(tokenA));
@@ -399,7 +413,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -425,7 +439,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -457,7 +471,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -484,6 +498,45 @@ contract LegionSafeManageTest is Test {
         assertTrue(true);
     }
 
+    function test_CustomWindowDurationReset() public {
+        uint256 limit = 100e18;
+        uint256 spendAmount = 100e18;
+        uint256 customWindow = 1 hours; // 1 hour window instead of 6
+        bytes4 swapSelector = MockDEX.swap.selector;
+        bytes4 approveSelector = bytes4(keccak256("approve(address,uint256)"));
+
+        vm.startPrank(owner);
+        vault.addTrackedToken(address(tokenA));
+        vault.setSpendingLimit(address(tokenA), limit, customWindow);
+        vault.setSpenderWhitelist(address(dex), true);
+        vault.setCallAuthorization(address(dex), swapSelector, true);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        vault.manage(address(tokenA), abi.encodeWithSelector(approveSelector, address(dex), type(uint256).max), 0);
+
+        // Spend full limit
+        vm.prank(operator);
+        vault.manage(
+            address(dex),
+            abi.encodeWithSelector(swapSelector, address(tokenA), address(tokenB), spendAmount, spendAmount),
+            0
+        );
+
+        // After 1 hour + 1 sec, window should reset
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Should be able to spend again
+        vm.prank(operator);
+        vault.manage(
+            address(dex),
+            abi.encodeWithSelector(swapSelector, address(tokenA), address(tokenB), spendAmount, spendAmount),
+            0
+        );
+
+        assertTrue(true);
+    }
+
     function test_MultipleTokensTrackedIndependently() public {
         uint256 limitA = 100e18;
         uint256 limitB = 200e18;
@@ -494,8 +547,8 @@ contract LegionSafeManageTest is Test {
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
         vault.addTrackedToken(address(tokenB));
-        vault.setSpendingLimit(address(tokenA), limitA);
-        vault.setSpendingLimit(address(tokenB), limitB);
+        vault.setSpendingLimit(address(tokenA), limitA, 0);
+        vault.setSpendingLimit(address(tokenB), limitB, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -526,7 +579,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(0));
-        vault.setSpendingLimit(address(0), limit);
+        vault.setSpendingLimit(address(0), limit, 0);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
 
@@ -549,7 +602,7 @@ contract LegionSafeManageTest is Test {
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
         vault.addTrackedToken(address(tokenB));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -579,7 +632,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(router, true);
         vm.stopPrank();
 
@@ -649,7 +702,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -678,7 +731,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -773,7 +826,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
@@ -811,7 +864,7 @@ contract LegionSafeManageTest is Test {
 
         vm.startPrank(owner);
         vault.addTrackedToken(address(tokenA));
-        vault.setSpendingLimit(address(tokenA), limit);
+        vault.setSpendingLimit(address(tokenA), limit, 0);
         vault.setSpenderWhitelist(address(dex), true);
         vault.setCallAuthorization(address(dex), swapSelector, true);
         vm.stopPrank();
