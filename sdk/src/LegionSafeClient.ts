@@ -1,5 +1,5 @@
-import { Address, Hash, formatUnits } from 'viem';
-import { LEGION_SAFE_ABI, ERC20_ABI } from './abis.js';
+import { Address, Hash, formatUnits } from "viem";
+import { LEGION_SAFE_ABI, ERC20_ABI } from "./abis.js";
 import type {
   LegionSafeConfig,
   AuthorizeCallParams,
@@ -9,7 +9,10 @@ import type {
   WithdrawERC20Params,
   TransactionResult,
   BalanceInfo,
-} from './types.js';
+  SetSpenderWhitelistParams,
+  SetSpendingLimitParams,
+  SpendingLimitInfo,
+} from "./types.js";
 
 /**
  * Main SDK client for interacting with LegionSafe contracts
@@ -30,7 +33,7 @@ export class LegionSafeClient {
    */
   private getAccount() {
     if (!this.walletClient.account) {
-      throw new Error('Wallet client must have an account');
+      throw new Error("Wallet client must have an account");
     }
     return this.walletClient.account;
   }
@@ -68,7 +71,7 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'setCallAuthorization',
+      functionName: "setCallAuthorization",
       args: [params.target, params.selector, params.authorized],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -91,7 +94,7 @@ export class LegionSafeClient {
     return this.publicClient.readContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'authorizedCalls',
+      functionName: "authorizedCalls",
       args: [target, selector],
     });
   }
@@ -112,11 +115,13 @@ export class LegionSafeClient {
    * });
    * ```
    */
-  async manage(params: ManageCallParams): Promise<TransactionResult & { returnData: `0x${string}` }> {
+  async manage(
+    params: ManageCallParams
+  ): Promise<TransactionResult & { returnData: `0x${string}` }> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'manage',
+      functionName: "manage",
       args: [params.target, params.data, params.value],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -126,7 +131,7 @@ export class LegionSafeClient {
 
     return {
       ...result,
-      returnData: '0x', // Return data is available in logs
+      returnData: "0x", // Return data is available in logs
     };
   }
 
@@ -146,16 +151,18 @@ export class LegionSafeClient {
    * });
    * ```
    */
-  async manageBatch(params: ManageBatchParams): Promise<TransactionResult & { returnData: `0x${string}`[] }> {
+  async manageBatch(
+    params: ManageBatchParams
+  ): Promise<TransactionResult & { returnData: `0x${string}`[] }> {
     // Transform object array into separate arrays for contract call
-    const targets = params.calls.map(call => call.target);
-    const data = params.calls.map(call => call.data);
-    const values = params.calls.map(call => call.value);
+    const targets = params.calls.map((call) => call.target);
+    const data = params.calls.map((call) => call.data);
+    const values = params.calls.map((call) => call.value);
 
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'manageBatch',
+      functionName: "manageBatch",
       args: [targets, data, values],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -179,7 +186,7 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'withdrawETH',
+      functionName: "withdrawETH",
       args: [params.amount],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -197,7 +204,7 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'withdrawAllETH',
+      functionName: "withdrawAllETH",
       args: [],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -216,7 +223,7 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'withdrawERC20',
+      functionName: "withdrawERC20",
       args: [params.token, params.amount],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -235,7 +242,7 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'withdrawAllERC20',
+      functionName: "withdrawAllERC20",
       args: [token],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -253,7 +260,7 @@ export class LegionSafeClient {
     const balance = await this.publicClient.readContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'getETHBalance',
+      functionName: "getETHBalance",
     });
 
     return {
@@ -274,18 +281,18 @@ export class LegionSafeClient {
       this.publicClient.readContract({
         address: this.safeAddress,
         abi: LEGION_SAFE_ABI,
-        functionName: 'getTokenBalance',
+        functionName: "getTokenBalance",
         args: [token],
       }),
       this.publicClient.readContract({
         address: token,
         abi: ERC20_ABI,
-        functionName: 'decimals',
+        functionName: "decimals",
       }),
       this.publicClient.readContract({
         address: token,
         abi: ERC20_ABI,
-        functionName: 'symbol',
+        functionName: "symbol",
       }),
     ]);
 
@@ -304,7 +311,7 @@ export class LegionSafeClient {
     return this.publicClient.readContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'owner',
+      functionName: "owner",
     });
   }
 
@@ -315,7 +322,7 @@ export class LegionSafeClient {
     return this.publicClient.readContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'operator',
+      functionName: "operator",
     });
   }
 
@@ -329,7 +336,7 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'transferOwnership',
+      functionName: "transferOwnership",
       args: [newOwner],
       account: this.getAccount(),
       chain: this.walletClient.chain,
@@ -348,12 +355,190 @@ export class LegionSafeClient {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
-      functionName: 'setOperator',
+      functionName: "setOperator",
       args: [newOperator],
       account: this.getAccount(),
       chain: this.walletClient.chain,
     });
 
     return this.waitForTransaction(hash);
+  }
+
+  // ============================================
+  // Spending Limit & Whitelist Methods
+  // ============================================
+
+  /**
+   * Whitelist or remove a spender address for ERC20 approve operations (owner only)
+   *
+   * @param params Whitelist parameters
+   * @returns Transaction result
+   *
+   * @example
+   * ```typescript
+   * await client.setSpenderWhitelist({
+   *   spender: '0xRouterAddress',
+   *   whitelisted: true,
+   * });
+   * ```
+   */
+  async setSpenderWhitelist(
+    params: SetSpenderWhitelistParams
+  ): Promise<TransactionResult> {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "setSpenderWhitelist",
+      args: [params.spender, params.whitelisted],
+      account: this.getAccount(),
+      chain: this.walletClient.chain,
+    });
+
+    return this.waitForTransaction(hash);
+  }
+
+  /**
+   * Check if a spender is whitelisted
+   *
+   * @param spender Spender address
+   * @returns Whether the spender is whitelisted
+   */
+  async isSpenderWhitelisted(spender: Address): Promise<boolean> {
+    return this.publicClient.readContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "whitelistedSpenders",
+      args: [spender],
+    });
+  }
+
+  /**
+   * Add a token to the spending tracking list (owner only)
+   *
+   * @param token Token address (use 0x0 for native token)
+   * @returns Transaction result
+   */
+  async addTrackedToken(token: Address): Promise<TransactionResult> {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "addTrackedToken",
+      args: [token],
+      account: this.getAccount(),
+      chain: this.walletClient.chain,
+    });
+
+    return this.waitForTransaction(hash);
+  }
+
+  /**
+   * Remove a token from the spending tracking list (owner only)
+   *
+   * @param token Token address to remove
+   * @returns Transaction result
+   */
+  async removeTrackedToken(token: Address): Promise<TransactionResult> {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "removeTrackedToken",
+      args: [token],
+      account: this.getAccount(),
+      chain: this.walletClient.chain,
+    });
+
+    return this.waitForTransaction(hash);
+  }
+
+  /**
+   * Get the list of tracked tokens
+   *
+   * @returns Array of tracked token addresses
+   */
+  async getTrackedTokens(): Promise<Address[]> {
+    return this.publicClient.readContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "getTrackedTokens",
+    }) as Promise<Address[]>;
+  }
+
+  /**
+   * Set spending limit for a token (owner only)
+   *
+   * @param params Spending limit parameters
+   * @returns Transaction result
+   *
+   * @example
+   * ```typescript
+   * // Set 100 USDC per 6 hours (default window)
+   * await client.setSpendingLimit({
+   *   token: '0xUSDC_ADDRESS',
+   *   limitPerWindow: 100_000000n, // 100 USDC (6 decimals)
+   * });
+   *
+   * // Set 1 ETH per 1 hour (custom window)
+   * await client.setSpendingLimit({
+   *   token: '0x0000000000000000000000000000000000000000',
+   *   limitPerWindow: parseEther('1'),
+   *   windowDuration: 3600n, // 1 hour in seconds
+   * });
+   * ```
+   */
+  async setSpendingLimit(
+    params: SetSpendingLimitParams
+  ): Promise<TransactionResult> {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "setSpendingLimit",
+      args: [params.token, params.limitPerWindow, params.windowDuration || 0n],
+      account: this.getAccount(),
+      chain: this.walletClient.chain,
+    });
+
+    return this.waitForTransaction(hash);
+  }
+
+  /**
+   * Get spending limit information for a token
+   *
+   * @param token Token address
+   * @returns Spending limit info including remaining amount and window end time
+   *
+   * @example
+   * ```typescript
+   * const info = await client.getSpendingLimitInfo('0xUSDC_ADDRESS');
+   * console.log(`Remaining: ${formatUnits(info.remaining, 6)} USDC`);
+   * console.log(`Window ends at: ${new Date(Number(info.windowEndsAt) * 1000)}`);
+   * ```
+   */
+  async getSpendingLimitInfo(token: Address): Promise<SpendingLimitInfo> {
+    const [limitData, remainingData] = await Promise.all([
+      this.publicClient.readContract({
+        address: this.safeAddress,
+        abi: LEGION_SAFE_ABI,
+        functionName: "spendingLimits",
+        args: [token],
+      }) as Promise<[bigint, bigint, bigint, bigint]>,
+      this.publicClient.readContract({
+        address: this.safeAddress,
+        abi: LEGION_SAFE_ABI,
+        functionName: "getRemainingLimit",
+        args: [token],
+      }) as Promise<[bigint, bigint]>,
+    ]);
+
+    const [limitPerWindow, windowDuration, spent, lastWindowStart] = limitData;
+    const [remaining, windowEndsAt] = remainingData;
+
+    return {
+      limitPerWindow,
+      windowDuration,
+      spent,
+      lastWindowStart,
+      remaining,
+      windowEndsAt,
+    };
   }
 }

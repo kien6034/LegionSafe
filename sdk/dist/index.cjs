@@ -135,6 +135,77 @@ var LEGION_SAFE_ABI = [
     stateMutability: "view"
   },
   {
+    type: "function",
+    name: "setSpenderWhitelist",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "whitelisted", type: "bool" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "whitelistedSpenders",
+    inputs: [{ name: "spender", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view"
+  },
+  {
+    type: "function",
+    name: "addTrackedToken",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "removeTrackedToken",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "getTrackedTokens",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]" }],
+    stateMutability: "view"
+  },
+  {
+    type: "function",
+    name: "setSpendingLimit",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "limitPerWindow", type: "uint256" },
+      { name: "windowDuration", type: "uint256" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
+    name: "getRemainingLimit",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [
+      { name: "remaining", type: "uint256" },
+      { name: "windowEndsAt", type: "uint256" }
+    ],
+    stateMutability: "view"
+  },
+  {
+    type: "function",
+    name: "spendingLimits",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [
+      { name: "limitPerWindow", type: "uint256" },
+      { name: "windowDuration", type: "uint256" },
+      { name: "spent", type: "uint256" },
+      { name: "lastWindowStart", type: "uint256" }
+    ],
+    stateMutability: "view"
+  },
+  {
     type: "event",
     name: "CallAuthorized",
     inputs: [
@@ -518,6 +589,166 @@ var LegionSafeClient = class {
       chain: this.walletClient.chain
     });
     return this.waitForTransaction(hash);
+  }
+  // ============================================
+  // Spending Limit & Whitelist Methods
+  // ============================================
+  /**
+   * Whitelist or remove a spender address for ERC20 approve operations (owner only)
+   *
+   * @param params Whitelist parameters
+   * @returns Transaction result
+   *
+   * @example
+   * ```typescript
+   * await client.setSpenderWhitelist({
+   *   spender: '0xRouterAddress',
+   *   whitelisted: true,
+   * });
+   * ```
+   */
+  async setSpenderWhitelist(params) {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "setSpenderWhitelist",
+      args: [params.spender, params.whitelisted],
+      account: this.getAccount(),
+      chain: this.walletClient.chain
+    });
+    return this.waitForTransaction(hash);
+  }
+  /**
+   * Check if a spender is whitelisted
+   *
+   * @param spender Spender address
+   * @returns Whether the spender is whitelisted
+   */
+  async isSpenderWhitelisted(spender) {
+    return this.publicClient.readContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "whitelistedSpenders",
+      args: [spender]
+    });
+  }
+  /**
+   * Add a token to the spending tracking list (owner only)
+   *
+   * @param token Token address (use 0x0 for native token)
+   * @returns Transaction result
+   */
+  async addTrackedToken(token) {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "addTrackedToken",
+      args: [token],
+      account: this.getAccount(),
+      chain: this.walletClient.chain
+    });
+    return this.waitForTransaction(hash);
+  }
+  /**
+   * Remove a token from the spending tracking list (owner only)
+   *
+   * @param token Token address to remove
+   * @returns Transaction result
+   */
+  async removeTrackedToken(token) {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "removeTrackedToken",
+      args: [token],
+      account: this.getAccount(),
+      chain: this.walletClient.chain
+    });
+    return this.waitForTransaction(hash);
+  }
+  /**
+   * Get the list of tracked tokens
+   *
+   * @returns Array of tracked token addresses
+   */
+  async getTrackedTokens() {
+    return this.publicClient.readContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "getTrackedTokens"
+    });
+  }
+  /**
+   * Set spending limit for a token (owner only)
+   *
+   * @param params Spending limit parameters
+   * @returns Transaction result
+   *
+   * @example
+   * ```typescript
+   * // Set 100 USDC per 6 hours (default window)
+   * await client.setSpendingLimit({
+   *   token: '0xUSDC_ADDRESS',
+   *   limitPerWindow: 100_000000n, // 100 USDC (6 decimals)
+   * });
+   *
+   * // Set 1 ETH per 1 hour (custom window)
+   * await client.setSpendingLimit({
+   *   token: '0x0000000000000000000000000000000000000000',
+   *   limitPerWindow: parseEther('1'),
+   *   windowDuration: 3600n, // 1 hour in seconds
+   * });
+   * ```
+   */
+  async setSpendingLimit(params) {
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "setSpendingLimit",
+      args: [params.token, params.limitPerWindow, params.windowDuration || 0n],
+      account: this.getAccount(),
+      chain: this.walletClient.chain
+    });
+    return this.waitForTransaction(hash);
+  }
+  /**
+   * Get spending limit information for a token
+   *
+   * @param token Token address
+   * @returns Spending limit info including remaining amount and window end time
+   *
+   * @example
+   * ```typescript
+   * const info = await client.getSpendingLimitInfo('0xUSDC_ADDRESS');
+   * console.log(`Remaining: ${formatUnits(info.remaining, 6)} USDC`);
+   * console.log(`Window ends at: ${new Date(Number(info.windowEndsAt) * 1000)}`);
+   * ```
+   */
+  async getSpendingLimitInfo(token) {
+    const [limitData, remainingData] = await Promise.all([
+      this.publicClient.readContract({
+        address: this.safeAddress,
+        abi: LEGION_SAFE_ABI,
+        functionName: "spendingLimits",
+        args: [token]
+      }),
+      this.publicClient.readContract({
+        address: this.safeAddress,
+        abi: LEGION_SAFE_ABI,
+        functionName: "getRemainingLimit",
+        args: [token]
+      })
+    ]);
+    const [limitPerWindow, windowDuration, spent, lastWindowStart] = limitData;
+    const [remaining, windowEndsAt] = remainingData;
+    return {
+      limitPerWindow,
+      windowDuration,
+      spent,
+      lastWindowStart,
+      remaining,
+      windowEndsAt
+    };
   }
 };
 

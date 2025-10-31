@@ -93,6 +93,43 @@ interface BalanceInfo {
     /** Token symbol (if applicable) */
     symbol?: string;
 }
+/**
+ * Parameters for whitelisting a spender
+ */
+interface SetSpenderWhitelistParams {
+    /** Spender address to whitelist/remove */
+    spender: Address;
+    /** Whether to whitelist (true) or remove (false) */
+    whitelisted: boolean;
+}
+/**
+ * Parameters for setting a spending limit
+ */
+interface SetSpendingLimitParams {
+    /** Token address (use 0x0 for native token) */
+    token: Address;
+    /** Maximum amount per window */
+    limitPerWindow: bigint;
+    /** Window duration in seconds (0 = use default 6 hours) */
+    windowDuration?: bigint;
+}
+/**
+ * Spending limit information
+ */
+interface SpendingLimitInfo {
+    /** Maximum amount per window */
+    limitPerWindow: bigint;
+    /** Window duration in seconds */
+    windowDuration: bigint;
+    /** Amount spent in current window */
+    spent: bigint;
+    /** Timestamp when current window started */
+    lastWindowStart: bigint;
+    /** Amount remaining in current window */
+    remaining: bigint;
+    /** Timestamp when current window ends */
+    windowEndsAt: bigint;
+}
 
 /**
  * Main SDK client for interacting with LegionSafe contracts
@@ -234,6 +271,85 @@ declare class LegionSafeClient {
      * @returns Transaction result
      */
     setOperator(newOperator: Address): Promise<TransactionResult>;
+    /**
+     * Whitelist or remove a spender address for ERC20 approve operations (owner only)
+     *
+     * @param params Whitelist parameters
+     * @returns Transaction result
+     *
+     * @example
+     * ```typescript
+     * await client.setSpenderWhitelist({
+     *   spender: '0xRouterAddress',
+     *   whitelisted: true,
+     * });
+     * ```
+     */
+    setSpenderWhitelist(params: SetSpenderWhitelistParams): Promise<TransactionResult>;
+    /**
+     * Check if a spender is whitelisted
+     *
+     * @param spender Spender address
+     * @returns Whether the spender is whitelisted
+     */
+    isSpenderWhitelisted(spender: Address): Promise<boolean>;
+    /**
+     * Add a token to the spending tracking list (owner only)
+     *
+     * @param token Token address (use 0x0 for native token)
+     * @returns Transaction result
+     */
+    addTrackedToken(token: Address): Promise<TransactionResult>;
+    /**
+     * Remove a token from the spending tracking list (owner only)
+     *
+     * @param token Token address to remove
+     * @returns Transaction result
+     */
+    removeTrackedToken(token: Address): Promise<TransactionResult>;
+    /**
+     * Get the list of tracked tokens
+     *
+     * @returns Array of tracked token addresses
+     */
+    getTrackedTokens(): Promise<Address[]>;
+    /**
+     * Set spending limit for a token (owner only)
+     *
+     * @param params Spending limit parameters
+     * @returns Transaction result
+     *
+     * @example
+     * ```typescript
+     * // Set 100 USDC per 6 hours (default window)
+     * await client.setSpendingLimit({
+     *   token: '0xUSDC_ADDRESS',
+     *   limitPerWindow: 100_000000n, // 100 USDC (6 decimals)
+     * });
+     *
+     * // Set 1 ETH per 1 hour (custom window)
+     * await client.setSpendingLimit({
+     *   token: '0x0000000000000000000000000000000000000000',
+     *   limitPerWindow: parseEther('1'),
+     *   windowDuration: 3600n, // 1 hour in seconds
+     * });
+     * ```
+     */
+    setSpendingLimit(params: SetSpendingLimitParams): Promise<TransactionResult>;
+    /**
+     * Get spending limit information for a token
+     *
+     * @param token Token address
+     * @returns Spending limit info including remaining amount and window end time
+     *
+     * @example
+     * ```typescript
+     * const info = await client.getSpendingLimitInfo('0xUSDC_ADDRESS');
+     * console.log(`Remaining: ${formatUnits(info.remaining, 6)} USDC`);
+     * console.log(`Window ends at: ${new Date(Number(info.windowEndsAt) * 1000)}`);
+     * ```
+     */
+    getSpendingLimitInfo(token: Address): Promise<SpendingLimitInfo>;
 }
 
 /**
@@ -406,6 +522,108 @@ declare const LEGION_SAFE_ABI: readonly [{
     readonly outputs: readonly [{
         readonly name: "";
         readonly type: "bool";
+    }];
+    readonly stateMutability: "view";
+}, {
+    readonly type: "function";
+    readonly name: "setSpenderWhitelist";
+    readonly inputs: readonly [{
+        readonly name: "spender";
+        readonly type: "address";
+    }, {
+        readonly name: "whitelisted";
+        readonly type: "bool";
+    }];
+    readonly outputs: readonly [];
+    readonly stateMutability: "nonpayable";
+}, {
+    readonly type: "function";
+    readonly name: "whitelistedSpenders";
+    readonly inputs: readonly [{
+        readonly name: "spender";
+        readonly type: "address";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "bool";
+    }];
+    readonly stateMutability: "view";
+}, {
+    readonly type: "function";
+    readonly name: "addTrackedToken";
+    readonly inputs: readonly [{
+        readonly name: "token";
+        readonly type: "address";
+    }];
+    readonly outputs: readonly [];
+    readonly stateMutability: "nonpayable";
+}, {
+    readonly type: "function";
+    readonly name: "removeTrackedToken";
+    readonly inputs: readonly [{
+        readonly name: "token";
+        readonly type: "address";
+    }];
+    readonly outputs: readonly [];
+    readonly stateMutability: "nonpayable";
+}, {
+    readonly type: "function";
+    readonly name: "getTrackedTokens";
+    readonly inputs: readonly [];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "address[]";
+    }];
+    readonly stateMutability: "view";
+}, {
+    readonly type: "function";
+    readonly name: "setSpendingLimit";
+    readonly inputs: readonly [{
+        readonly name: "token";
+        readonly type: "address";
+    }, {
+        readonly name: "limitPerWindow";
+        readonly type: "uint256";
+    }, {
+        readonly name: "windowDuration";
+        readonly type: "uint256";
+    }];
+    readonly outputs: readonly [];
+    readonly stateMutability: "nonpayable";
+}, {
+    readonly type: "function";
+    readonly name: "getRemainingLimit";
+    readonly inputs: readonly [{
+        readonly name: "token";
+        readonly type: "address";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "remaining";
+        readonly type: "uint256";
+    }, {
+        readonly name: "windowEndsAt";
+        readonly type: "uint256";
+    }];
+    readonly stateMutability: "view";
+}, {
+    readonly type: "function";
+    readonly name: "spendingLimits";
+    readonly inputs: readonly [{
+        readonly name: "token";
+        readonly type: "address";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "limitPerWindow";
+        readonly type: "uint256";
+    }, {
+        readonly name: "windowDuration";
+        readonly type: "uint256";
+    }, {
+        readonly name: "spent";
+        readonly type: "uint256";
+    }, {
+        readonly name: "lastWindowStart";
+        readonly type: "uint256";
     }];
     readonly stateMutability: "view";
 }, {

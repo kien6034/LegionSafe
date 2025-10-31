@@ -1,4 +1,4 @@
-import { Address, Hash, PublicClient, WalletClient } from 'viem';
+import { Address, Hash, PublicClient, WalletClient } from "viem";
 
 /**
  * Configuration for LegionSafe client
@@ -85,7 +85,7 @@ export interface TransactionResult {
   /** Gas used */
   gasUsed: bigint;
   /** Transaction status */
-  status: 'success' | 'reverted';
+  status: "success" | "reverted";
 }
 
 /**
@@ -100,4 +100,44 @@ export interface BalanceInfo {
   decimals: number;
   /** Token symbol (if applicable) */
   symbol?: string;
+}
+
+/**
+ * Parameters for whitelisting a spender
+ */
+export interface SetSpenderWhitelistParams {
+  /** Spender address to whitelist/remove */
+  spender: Address;
+  /** Whether to whitelist (true) or remove (false) */
+  whitelisted: boolean;
+}
+
+/**
+ * Parameters for setting a spending limit
+ */
+export interface SetSpendingLimitParams {
+  /** Token address (use 0x0 for native token) */
+  token: Address;
+  /** Maximum amount per window */
+  limitPerWindow: bigint;
+  /** Window duration in seconds (0 = use default 6 hours) */
+  windowDuration?: bigint;
+}
+
+/**
+ * Spending limit information
+ */
+export interface SpendingLimitInfo {
+  /** Maximum amount per window */
+  limitPerWindow: bigint;
+  /** Window duration in seconds */
+  windowDuration: bigint;
+  /** Amount spent in current window */
+  spent: bigint;
+  /** Timestamp when current window started */
+  lastWindowStart: bigint;
+  /** Amount remaining in current window */
+  remaining: bigint;
+  /** Timestamp when current window ends */
+  windowEndsAt: bigint;
 }

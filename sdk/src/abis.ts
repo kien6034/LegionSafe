@@ -3,164 +3,231 @@
  */
 export const LEGION_SAFE_ABI = [
   {
-    type: 'constructor',
+    type: "constructor",
     inputs: [
-      { name: '_owner', type: 'address' },
-      { name: '_operator', type: 'address' }
+      { name: "_owner", type: "address" },
+      { name: "_operator", type: "address" },
     ],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'owner',
+    type: "function",
+    name: "owner",
     inputs: [],
-    outputs: [{ name: '', type: 'address' }],
-    stateMutability: 'view'
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'operator',
+    type: "function",
+    name: "operator",
     inputs: [],
-    outputs: [{ name: '', type: 'address' }],
-    stateMutability: 'view'
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'setCallAuthorization',
+    type: "function",
+    name: "setCallAuthorization",
     inputs: [
-      { name: 'target', type: 'address' },
-      { name: 'selector', type: 'bytes4' },
-      { name: 'authorized', type: 'bool' }
+      { name: "target", type: "address" },
+      { name: "selector", type: "bytes4" },
+      { name: "authorized", type: "bool" },
     ],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'manage',
+    type: "function",
+    name: "manage",
     inputs: [
-      { name: 'target', type: 'address' },
-      { name: 'data', type: 'bytes' },
-      { name: 'value', type: 'uint256' }
+      { name: "target", type: "address" },
+      { name: "data", type: "bytes" },
+      { name: "value", type: "uint256" },
     ],
-    outputs: [{ name: '', type: 'bytes' }],
-    stateMutability: 'nonpayable'
+    outputs: [{ name: "", type: "bytes" }],
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'manageBatch',
+    type: "function",
+    name: "manageBatch",
     inputs: [
-      { name: 'targets', type: 'address[]' },
-      { name: 'data', type: 'bytes[]' },
-      { name: 'values', type: 'uint256[]' }
+      { name: "targets", type: "address[]" },
+      { name: "data", type: "bytes[]" },
+      { name: "values", type: "uint256[]" },
     ],
-    outputs: [{ name: '', type: 'bytes[]' }],
-    stateMutability: 'nonpayable'
+    outputs: [{ name: "", type: "bytes[]" }],
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'transferOwnership',
-    inputs: [{ name: 'newOwner', type: 'address' }],
+    type: "function",
+    name: "transferOwnership",
+    inputs: [{ name: "newOwner", type: "address" }],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'setOperator',
-    inputs: [{ name: 'newOperator', type: 'address' }],
+    type: "function",
+    name: "setOperator",
+    inputs: [{ name: "newOperator", type: "address" }],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'withdrawETH',
-    inputs: [
-      { name: 'amount', type: 'uint256' }
-    ],
+    type: "function",
+    name: "withdrawETH",
+    inputs: [{ name: "amount", type: "uint256" }],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'withdrawAllETH',
+    type: "function",
+    name: "withdrawAllETH",
     inputs: [],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'withdrawERC20',
+    type: "function",
+    name: "withdrawERC20",
     inputs: [
-      { name: 'token', type: 'address' },
-      { name: 'amount', type: 'uint256' }
+      { name: "token", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'withdrawAllERC20',
-    inputs: [
-      { name: 'token', type: 'address' }
-    ],
+    type: "function",
+    name: "withdrawAllERC20",
+    inputs: [{ name: "token", type: "address" }],
     outputs: [],
-    stateMutability: 'nonpayable'
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'getETHBalance',
+    type: "function",
+    name: "getETHBalance",
     inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view'
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'getTokenBalance',
-    inputs: [{ name: 'token', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view'
+    type: "function",
+    name: "getTokenBalance",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'authorizedCalls',
+    type: "function",
+    name: "authorizedCalls",
     inputs: [
-      { name: 'target', type: 'address' },
-      { name: 'selector', type: 'bytes4' }
+      { name: "target", type: "address" },
+      { name: "selector", type: "bytes4" },
     ],
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'view'
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
   },
   {
-    type: 'event',
-    name: 'CallAuthorized',
+    type: "function",
+    name: "setSpenderWhitelist",
     inputs: [
-      { name: 'target', type: 'address', indexed: true },
-      { name: 'selector', type: 'bytes4', indexed: true },
-      { name: 'authorized', type: 'bool', indexed: false }
-    ]
+      { name: "spender", type: "address" },
+      { name: "whitelisted", type: "bool" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    type: 'event',
-    name: 'Managed',
+    type: "function",
+    name: "whitelistedSpenders",
+    inputs: [{ name: "spender", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "addTrackedToken",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "removeTrackedToken",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getTrackedTokens",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "setSpendingLimit",
     inputs: [
-      { name: 'target', type: 'address', indexed: true },
-      { name: 'data', type: 'bytes', indexed: false },
-      { name: 'value', type: 'uint256', indexed: false }
-    ]
+      { name: "token", type: "address" },
+      { name: "limitPerWindow", type: "uint256" },
+      { name: "windowDuration", type: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    type: 'event',
-    name: 'ManagedBatch',
+    type: "function",
+    name: "getRemainingLimit",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [
+      { name: "remaining", type: "uint256" },
+      { name: "windowEndsAt", type: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "spendingLimits",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [
+      { name: "limitPerWindow", type: "uint256" },
+      { name: "windowDuration", type: "uint256" },
+      { name: "spent", type: "uint256" },
+      { name: "lastWindowStart", type: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "event",
+    name: "CallAuthorized",
     inputs: [
-      { name: 'targets', type: 'address[]', indexed: false },
-      { name: 'data', type: 'bytes[]', indexed: false },
-      { name: 'values', type: 'uint256[]', indexed: false }
-    ]
+      { name: "target", type: "address", indexed: true },
+      { name: "selector", type: "bytes4", indexed: true },
+      { name: "authorized", type: "bool", indexed: false },
+    ],
   },
   {
-    type: 'receive',
-    stateMutability: 'payable'
-  }
+    type: "event",
+    name: "Managed",
+    inputs: [
+      { name: "target", type: "address", indexed: true },
+      { name: "data", type: "bytes", indexed: false },
+      { name: "value", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "ManagedBatch",
+    inputs: [
+      { name: "targets", type: "address[]", indexed: false },
+      { name: "data", type: "bytes[]", indexed: false },
+      { name: "values", type: "uint256[]", indexed: false },
+    ],
+  },
+  {
+    type: "receive",
+    stateMutability: "payable",
+  },
 ] as const;
 
 /**
@@ -168,44 +235,44 @@ export const LEGION_SAFE_ABI = [
  */
 export const ERC20_ABI = [
   {
-    type: 'function',
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view'
+    type: "function",
+    name: "balanceOf",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'decimals',
+    type: "function",
+    name: "decimals",
     inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-    stateMutability: 'view'
+    outputs: [{ name: "", type: "uint8" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'symbol',
+    type: "function",
+    name: "symbol",
     inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view'
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
   },
   {
-    type: 'function',
-    name: 'approve',
+    type: "function",
+    name: "approve",
     inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' }
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'nonpayable'
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
   },
   {
-    type: 'function',
-    name: 'transfer',
+    type: "function",
+    name: "transfer",
     inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' }
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    outputs: [{ name: '', type: 'bool' }],
-    stateMutability: 'nonpayable'
-  }
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+  },
 ] as const;
