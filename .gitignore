@@ -12,7 +12,6 @@ out/
 
 # Docs (except plans)
 docs/*
-!docs/plans/
 
 docs
 
@@ -22,3 +21,5 @@ env.sh
 
 # Worktrees
 .worktrees/
+
+CLAUDE.md
