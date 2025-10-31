@@ -23,11 +23,31 @@ contract LegionSafe is
 {
     using SafeERC20 for IERC20;
 
+    // Constants
+    bytes4 public constant APPROVE_SELECTOR = 0x095ea7b3; // approve(address,uint256)
+    uint256 public constant SPENDING_WINDOW_DURATION = 6 hours;
+
+    // Structs
+    struct SpendingLimit {
+        uint256 limitPerWindow;    // Max amount per 6-hour window
+        uint256 spent;              // Amount spent in current window
+        uint256 lastWindowStart;    // Start of the window when last spend occurred
+    }
+
     // State variables
     address public operator;
 
     // Mapping to track authorized function signatures for specific target contracts
     mapping(address => mapping(bytes4 => bool)) public authorizedCalls;
+
+    // Whitelist for approve operations
+    mapping(address => bool) public whitelistedSpenders;
+
+    // Spending limits by token address (address(0) = native token ETH/BNB)
+    mapping(address => SpendingLimit) public spendingLimits;
+
+    // List of tokens to track spending for
+    address[] public trackedTokens;
 
     // Events
     event OperatorChanged(address indexed previousOperator, address indexed newOperator);
@@ -36,6 +56,11 @@ contract LegionSafe is
     event Withdrawn(address indexed token, address indexed to, uint256 amount);
     event EthReceived(address indexed sender, uint256 amount);
     event ManagedBatch(address[] targets, bytes[] data, uint256[] values);
+    event SpenderWhitelisted(address indexed spender, bool whitelisted);
+    event SpendingLimitSet(address indexed token, uint256 limitPerWindow);
+    event SpendingTracked(address indexed token, uint256 amount, uint256 totalSpent);
+    event TrackedTokenAdded(address indexed token);
+    event TrackedTokenRemoved(address indexed token);
 
     // Errors
     error Unauthorized();
@@ -45,6 +70,10 @@ contract LegionSafe is
     error WithdrawalFailed();
     error InvalidAmount();
     error InvalidInput();
+    error SpenderNotWhitelisted();
+    error SpendingLimitExceeded(address token, uint256 amount, uint256 limit);
+    error TokenAlreadyTracked();
+    error TokenNotTracked();
 
     // Modifiers
     modifier onlyOperator() {
@@ -98,6 +127,104 @@ contract LegionSafe is
     }
 
     /**
+     * @notice Whitelist or remove a spender address for ERC20 approve operations
+     * @param spender The address to whitelist (e.g., DEX router)
+     * @param whitelisted Whether to whitelist (true) or remove (false) the spender
+     */
+    function setSpenderWhitelist(address spender, bool whitelisted) external onlyOwner {
+        if (spender == address(0)) revert InvalidAddress();
+        whitelistedSpenders[spender] = whitelisted;
+        emit SpenderWhitelisted(spender, whitelisted);
+    }
+
+    /**
+     * @notice Add a token to the spending tracking list
+     * @param token The token address to track (use address(0) for native token)
+     */
+    function addTrackedToken(address token) external onlyOwner {
+        // Check not already added
+        for (uint256 i = 0; i < trackedTokens.length; i++) {
+            if (trackedTokens[i] == token) revert TokenAlreadyTracked();
+        }
+        trackedTokens.push(token);
+        emit TrackedTokenAdded(token);
+    }
+
+    /**
+     * @notice Remove a token from the spending tracking list
+     * @param token The token address to remove from tracking
+     */
+    function removeTrackedToken(address token) external onlyOwner {
+        for (uint256 i = 0; i < trackedTokens.length; i++) {
+            if (trackedTokens[i] == token) {
+                // Swap with last element and pop
+                trackedTokens[i] = trackedTokens[trackedTokens.length - 1];
+                trackedTokens.pop();
+                emit TrackedTokenRemoved(token);
+                return;
+            }
+        }
+        revert TokenNotTracked();
+    }
+
+    /**
+     * @notice Get the list of tracked tokens
+     * @return Array of tracked token addresses
+     */
+    function getTrackedTokens() external view returns (address[] memory) {
+        return trackedTokens;
+    }
+
+    /**
+     * @notice Set spending limit for a token
+     * @param token The token address (use address(0) for native token)
+     * @param limitPerWindow Maximum amount that can be spent per 6-hour window
+     */
+    function setSpendingLimit(address token, uint256 limitPerWindow) external onlyOwner {
+        spendingLimits[token] = SpendingLimit({
+            limitPerWindow: limitPerWindow,
+            spent: 0,
+            lastWindowStart: (block.timestamp / SPENDING_WINDOW_DURATION) * SPENDING_WINDOW_DURATION
+        });
+        emit SpendingLimitSet(token, limitPerWindow);
+    }
+
+    /**
+     * @notice Get remaining spending limit for a token in the current window
+     * @param token The token address to check
+     * @return remaining Amount remaining that can be spent in current window
+     * @return windowEndsAt Timestamp when the current window ends
+     */
+    function getRemainingLimit(address token) external view returns (
+        uint256 remaining,
+        uint256 windowEndsAt
+    ) {
+        SpendingLimit storage limit = spendingLimits[token];
+
+        if (limit.limitPerWindow == 0) {
+            return (0, 0); // No limit configured
+        }
+
+        uint256 currentWindowStart = (block.timestamp / SPENDING_WINDOW_DURATION) * SPENDING_WINDOW_DURATION;
+
+        // If new window, full limit available
+        if (currentWindowStart > limit.lastWindowStart) {
+            return (
+                limit.limitPerWindow,
+                currentWindowStart + SPENDING_WINDOW_DURATION
+            );
+        }
+
+        // Current window
+        remaining = limit.limitPerWindow > limit.spent
+            ? limit.limitPerWindow - limit.spent
+            : 0;
+        windowEndsAt = currentWindowStart + SPENDING_WINDOW_DURATION;
+
+        return (remaining, windowEndsAt);
+    }
+
+    /**
      * @notice Execute an arbitrary call to an external contract (operator only)
      * @dev Validates authorization before executing the call
      * @param target The contract address to call
@@ -113,18 +240,32 @@ contract LegionSafe is
         if (target == address(0)) revert InvalidAddress();
         if (data.length < 4) revert CallNotAuthorized();
 
-        // Extract function selector from calldata
         bytes4 selector = bytes4(data[:4]);
 
-        // Check if this call is authorized
-        if (!authorizedCalls[target][selector]) revert CallNotAuthorized();
+        // Special case: approve function
+        if (selector == APPROVE_SELECTOR) {
+            // Extract spender from calldata (bytes 4-36 = address parameter)
+            address spender = address(uint160(uint256(bytes32(data[4:36]))));
+
+            // Check if spender is whitelisted
+            if (!whitelistedSpenders[spender]) revert SpenderNotWhitelisted();
+
+            // Allow approve on any token (target) to whitelisted spender
+            // No spending limit check for approvals (just authorization)
+        } else {
+            // Normal path: check target+selector authorization
+            if (!authorizedCalls[target][selector]) revert CallNotAuthorized();
+        }
+
+        // Snapshot balances before call
+        uint256[] memory balancesBefore = _snapshotBalances();
 
         // Execute the call
         (bool success, bytes memory returnData) = target.call{value: value}(data);
+        if (!success) revert CallFailed(returnData);
 
-        if (!success) {
-            revert CallFailed(returnData);
-        }
+        // Check spending limits based on balance changes
+        _checkSpendingLimits(balancesBefore);
 
         emit Managed(target, value, data);
         return returnData;
@@ -244,6 +385,72 @@ contract LegionSafe is
      */
     function getTokenBalance(address token) external view returns (uint256) {
         return IERC20(token).balanceOf(address(this));
+    }
+
+    /**
+     * @notice Internal function to check and update spending limit for a token
+     * @param token The token address
+     * @param amount The amount being spent
+     */
+    function _checkAndUpdateLimit(address token, uint256 amount) internal {
+        SpendingLimit storage limit = spendingLimits[token];
+
+        if (limit.limitPerWindow == 0) return; // No limit configured
+
+        // Calculate current window start (aligned to 6-hour blocks)
+        uint256 currentWindowStart = (block.timestamp / SPENDING_WINDOW_DURATION) * SPENDING_WINDOW_DURATION;
+
+        // Reset if we're in a new window
+        if (currentWindowStart > limit.lastWindowStart) {
+            limit.spent = 0;
+            limit.lastWindowStart = currentWindowStart;
+        }
+
+        // Check limit
+        if (limit.spent + amount > limit.limitPerWindow) {
+            revert SpendingLimitExceeded(token, amount, limit.limitPerWindow);
+        }
+
+        // Update spent amount
+        limit.spent += amount;
+        emit SpendingTracked(token, amount, limit.spent);
+    }
+
+    /**
+     * @notice Internal function to snapshot balances before a call
+     * @return Array of balances for tracked tokens
+     */
+    function _snapshotBalances() internal view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](trackedTokens.length);
+        for (uint256 i = 0; i < trackedTokens.length; i++) {
+            if (trackedTokens[i] == address(0)) {
+                balances[i] = address(this).balance;
+            } else {
+                balances[i] = IERC20(trackedTokens[i]).balanceOf(address(this));
+            }
+        }
+        return balances;
+    }
+
+    /**
+     * @notice Internal function to check spending limits after a call
+     * @param balancesBefore Array of balances before the call
+     */
+    function _checkSpendingLimits(uint256[] memory balancesBefore) internal {
+        for (uint256 i = 0; i < trackedTokens.length; i++) {
+            uint256 balanceAfter;
+            if (trackedTokens[i] == address(0)) {
+                balanceAfter = address(this).balance;
+            } else {
+                balanceAfter = IERC20(trackedTokens[i]).balanceOf(address(this));
+            }
+
+            // If balance decreased, track as spending
+            if (balanceAfter < balancesBefore[i]) {
+                uint256 spent = balancesBefore[i] - balanceAfter;
+                _checkAndUpdateLimit(trackedTokens[i], spent);
+            }
+        }
     }
 
     /**
