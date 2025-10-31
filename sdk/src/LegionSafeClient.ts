@@ -4,6 +4,7 @@ import type {
   LegionSafeConfig,
   AuthorizeCallParams,
   ManageCallParams,
+  ManageBatchParams,
   WithdrawETHParams,
   WithdrawERC20Params,
   TransactionResult,
@@ -126,6 +127,45 @@ export class LegionSafeClient {
     return {
       ...result,
       returnData: '0x', // Return data is available in logs
+    };
+  }
+
+  /**
+   * Execute multiple calls atomically through the vault's manageBatch() function
+   *
+   * @param params Batch call parameters
+   * @returns Transaction result with array of returned data
+   *
+   * @example
+   * ```typescript
+   * await client.manageBatch({
+   *   calls: [
+   *     { target: tokenAddress, data: approveCalldata, value: 0n },
+   *     { target: routerAddress, data: swapCalldata, value: parseEther('0.1') }
+   *   ]
+   * });
+   * ```
+   */
+  async manageBatch(params: ManageBatchParams): Promise<TransactionResult & { returnData: `0x${string}`[] }> {
+    // Transform object array into separate arrays for contract call
+    const targets = params.calls.map(call => call.target);
+    const data = params.calls.map(call => call.data);
+    const values = params.calls.map(call => call.value);
+
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: 'manageBatch',
+      args: [targets, data, values],
+      account: this.getAccount(),
+      chain: this.walletClient.chain,
+    });
+
+    const result = await this.waitForTransaction(hash);
+
+    return {
+      ...result,
+      returnData: [], // Return data available in logs
     };
   }
 

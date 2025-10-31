@@ -37,6 +37,26 @@ export interface ManageCallParams {
 }
 
 /**
+ * Single call in a batch operation
+ */
+export interface BatchCallItem {
+  /** Target contract address */
+  target: Address;
+  /** Encoded calldata */
+  data: `0x${string}`;
+  /** Native token value to send (in wei) */
+  value: bigint;
+}
+
+/**
+ * Parameters for executing batch calls via manageBatch()
+ */
+export interface ManageBatchParams {
+  /** Array of calls to execute */
+  calls: BatchCallItem[];
+}
+
+/**
  * Parameters for withdrawing ETH
  */
 export interface WithdrawETHParams {

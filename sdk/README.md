@@ -6,6 +6,7 @@ TypeScript SDK for interacting with LegionSafe smart contracts. Build secure, au
 
 - 🔐 **Authorization Management** - Control which functions can be called
 - ⚡ **Arbitrary Call Execution** - Execute any authorized call through `manage()`
+- 🔀 **Batch Operations** - Execute multiple calls atomically with `manageBatch()`
 - 💰 **Withdrawal Functions** - Owner-controlled ETH and ERC20 withdrawals
 - 🔄 **DEX Integrations** - Built-in KyberSwap aggregator support
 - 📊 **Balance Queries** - Check vault balances for ETH and tokens
@@ -94,6 +95,41 @@ await client.manage({
 });
 ```
 
+### Batch Operations
+
+Execute multiple calls atomically with `manageBatch()`. All calls succeed or fail together:
+
+```typescript
+import { encodeFunctionData, parseAbi, parseEther } from 'viem';
+
+// Build approve calldata
+const approveCalldata = encodeFunctionData({
+  abi: parseAbi(['function approve(address,uint256)']),
+  functionName: 'approve',
+  args: [routerAddress, parseEther('100')],
+});
+
+// Build swap calldata
+const swapCalldata = encodeFunctionData({
+  abi: parseAbi(['function swap(address,address,uint256)']),
+  functionName: 'swap',
+  args: [tokenIn, tokenOut, parseEther('100')],
+});
+
+// Execute both atomically
+await client.manageBatch({
+  calls: [
+    { target: tokenAddress, data: approveCalldata, value: 0n },
+    { target: routerAddress, data: swapCalldata, value: 0n }
+  ]
+});
+```
+
+**Benefits:**
+- ⚛️ Atomic execution (all-or-nothing)
+- ⛽ Gas savings vs. multiple transactions
+- 🔒 Prevents partial execution (e.g., approve without swap)
+
 ### Withdrawals
 
 Owner can withdraw funds from the vault to their own address:
@@ -154,6 +190,7 @@ Check the [examples/](./examples/) directory for complete working examples:
 - **basic-usage.ts** - Query vault information
 - **kyberswap-swap.ts** - Execute DEX swaps
 - **authorize-and-manage.ts** - Authorize and execute calls
+- **batch-operations.ts** - Execute multiple calls atomically
 
 ## Development
 

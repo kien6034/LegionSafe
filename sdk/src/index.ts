@@ -6,6 +6,8 @@ export type {
   LegionSafeConfig,
   AuthorizeCallParams,
   ManageCallParams,
+  BatchCallItem,
+  ManageBatchParams,
   WithdrawETHParams,
   WithdrawERC20Params,
   TransactionResult,

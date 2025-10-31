@@ -52,6 +52,17 @@ var LEGION_SAFE_ABI = [
   },
   {
     type: "function",
+    name: "manageBatch",
+    inputs: [
+      { name: "targets", type: "address[]" },
+      { name: "data", type: "bytes[]" },
+      { name: "values", type: "uint256[]" }
+    ],
+    outputs: [{ name: "", type: "bytes[]" }],
+    stateMutability: "nonpayable"
+  },
+  {
+    type: "function",
     name: "transferOwnership",
     inputs: [{ name: "newOwner", type: "address" }],
     outputs: [],
@@ -139,6 +150,15 @@ var LEGION_SAFE_ABI = [
       { name: "target", type: "address", indexed: true },
       { name: "data", type: "bytes", indexed: false },
       { name: "value", type: "uint256", indexed: false }
+    ]
+  },
+  {
+    type: "event",
+    name: "ManagedBatch",
+    inputs: [
+      { name: "targets", type: "address[]", indexed: false },
+      { name: "data", type: "bytes[]", indexed: false },
+      { name: "values", type: "uint256[]", indexed: false }
     ]
   },
   {
@@ -292,6 +312,41 @@ var LegionSafeClient = class {
       ...result,
       returnData: "0x"
       // Return data is available in logs
+    };
+  }
+  /**
+   * Execute multiple calls atomically through the vault's manageBatch() function
+   *
+   * @param params Batch call parameters
+   * @returns Transaction result with array of returned data
+   *
+   * @example
+   * ```typescript
+   * await client.manageBatch({
+   *   calls: [
+   *     { target: tokenAddress, data: approveCalldata, value: 0n },
+   *     { target: routerAddress, data: swapCalldata, value: parseEther('0.1') }
+   *   ]
+   * });
+   * ```
+   */
+  async manageBatch(params) {
+    const targets = params.calls.map((call) => call.target);
+    const data = params.calls.map((call) => call.data);
+    const values = params.calls.map((call) => call.value);
+    const hash = await this.walletClient.writeContract({
+      address: this.safeAddress,
+      abi: LEGION_SAFE_ABI,
+      functionName: "manageBatch",
+      args: [targets, data, values],
+      account: this.getAccount(),
+      chain: this.walletClient.chain
+    });
+    const result = await this.waitForTransaction(hash);
+    return {
+      ...result,
+      returnData: []
+      // Return data available in logs
     };
   }
   /**

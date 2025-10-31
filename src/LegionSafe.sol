@@ -237,6 +237,10 @@ contract LegionSafe is
         nonReentrant
         returns (bytes memory)
     {
+        return _manage(target, data, value);
+    }
+
+    function _manage(address target, bytes calldata data, uint256 value) internal returns (bytes memory) {
         if (target == address(0)) revert InvalidAddress();
         if (data.length < 4) revert CallNotAuthorized();
 
@@ -289,7 +293,7 @@ contract LegionSafe is
 
         bytes[] memory returnData = new bytes[](targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
-            returnData[i] = manage(targets[i], data[i], values[i]);
+            returnData[i] = _manage(targets[i], data[i], values[i]);
         }
 
         emit ManagedBatch(targets, data, values);

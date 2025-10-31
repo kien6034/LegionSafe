@@ -34,6 +34,24 @@ interface ManageCallParams {
     value: bigint;
 }
 /**
+ * Single call in a batch operation
+ */
+interface BatchCallItem {
+    /** Target contract address */
+    target: Address;
+    /** Encoded calldata */
+    data: `0x${string}`;
+    /** Native token value to send (in wei) */
+    value: bigint;
+}
+/**
+ * Parameters for executing batch calls via manageBatch()
+ */
+interface ManageBatchParams {
+    /** Array of calls to execute */
+    calls: BatchCallItem[];
+}
+/**
  * Parameters for withdrawing ETH
  */
 interface WithdrawETHParams {
@@ -134,6 +152,25 @@ declare class LegionSafeClient {
      */
     manage(params: ManageCallParams): Promise<TransactionResult & {
         returnData: `0x${string}`;
+    }>;
+    /**
+     * Execute multiple calls atomically through the vault's manageBatch() function
+     *
+     * @param params Batch call parameters
+     * @returns Transaction result with array of returned data
+     *
+     * @example
+     * ```typescript
+     * await client.manageBatch({
+     *   calls: [
+     *     { target: tokenAddress, data: approveCalldata, value: 0n },
+     *     { target: routerAddress, data: swapCalldata, value: parseEther('0.1') }
+     *   ]
+     * });
+     * ```
+     */
+    manageBatch(params: ManageBatchParams): Promise<TransactionResult & {
+        returnData: `0x${string}`[];
     }>;
     /**
      * Withdraw ETH from the vault to the owner (owner only)
@@ -265,6 +302,24 @@ declare const LEGION_SAFE_ABI: readonly [{
     readonly stateMutability: "nonpayable";
 }, {
     readonly type: "function";
+    readonly name: "manageBatch";
+    readonly inputs: readonly [{
+        readonly name: "targets";
+        readonly type: "address[]";
+    }, {
+        readonly name: "data";
+        readonly type: "bytes[]";
+    }, {
+        readonly name: "values";
+        readonly type: "uint256[]";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "bytes[]";
+    }];
+    readonly stateMutability: "nonpayable";
+}, {
+    readonly type: "function";
     readonly name: "transferOwnership";
     readonly inputs: readonly [{
         readonly name: "newOwner";
@@ -383,6 +438,22 @@ declare const LEGION_SAFE_ABI: readonly [{
     }, {
         readonly name: "value";
         readonly type: "uint256";
+        readonly indexed: false;
+    }];
+}, {
+    readonly type: "event";
+    readonly name: "ManagedBatch";
+    readonly inputs: readonly [{
+        readonly name: "targets";
+        readonly type: "address[]";
+        readonly indexed: false;
+    }, {
+        readonly name: "data";
+        readonly type: "bytes[]";
+        readonly indexed: false;
+    }, {
+        readonly name: "values";
+        readonly type: "uint256[]";
         readonly indexed: false;
     }];
 }, {
@@ -620,4 +691,4 @@ declare const KYBERSWAP_SELECTORS: {
     readonly META_AGGREGATION: "0xe21fd0e9";
 };
 
-export { type AuthorizeCallParams, type BalanceInfo, CHAIN_IDS, ERC20_ABI, KYBERSWAP_API_BASE, KYBERSWAP_CHAIN_NAMES, KYBERSWAP_ROUTERS, KYBERSWAP_SELECTORS, type KyberSwapBuildRouteRequest, type KyberSwapBuildRouteResponse, KyberSwapClient, type KyberSwapParams, type KyberSwapRoute, type KyberSwapRouteSummary, LEGION_SAFE_ABI, LegionSafeClient, type LegionSafeConfig, type ManageCallParams, NATIVE_TOKEN_ADDRESS, type TransactionResult, type WithdrawERC20Params, type WithdrawETHParams, ZERO_ADDRESS, formatHash, getFunctionSelector, isValidAddress, isZeroAddress };
+export { type AuthorizeCallParams, type BalanceInfo, type BatchCallItem, CHAIN_IDS, ERC20_ABI, KYBERSWAP_API_BASE, KYBERSWAP_CHAIN_NAMES, KYBERSWAP_ROUTERS, KYBERSWAP_SELECTORS, type KyberSwapBuildRouteRequest, type KyberSwapBuildRouteResponse, KyberSwapClient, type KyberSwapParams, type KyberSwapRoute, type KyberSwapRouteSummary, LEGION_SAFE_ABI, LegionSafeClient, type LegionSafeConfig, type ManageBatchParams, type ManageCallParams, NATIVE_TOKEN_ADDRESS, type TransactionResult, type WithdrawERC20Params, type WithdrawETHParams, ZERO_ADDRESS, formatHash, getFunctionSelector, isValidAddress, isZeroAddress };

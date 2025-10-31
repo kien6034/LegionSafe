@@ -48,6 +48,17 @@ export const LEGION_SAFE_ABI = [
   },
   {
     type: 'function',
+    name: 'manageBatch',
+    inputs: [
+      { name: 'targets', type: 'address[]' },
+      { name: 'data', type: 'bytes[]' },
+      { name: 'values', type: 'uint256[]' }
+    ],
+    outputs: [{ name: '', type: 'bytes[]' }],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
     name: 'transferOwnership',
     inputs: [{ name: 'newOwner', type: 'address' }],
     outputs: [],
@@ -135,6 +146,15 @@ export const LEGION_SAFE_ABI = [
       { name: 'target', type: 'address', indexed: true },
       { name: 'data', type: 'bytes', indexed: false },
       { name: 'value', type: 'uint256', indexed: false }
+    ]
+  },
+  {
+    type: 'event',
+    name: 'ManagedBatch',
+    inputs: [
+      { name: 'targets', type: 'address[]', indexed: false },
+      { name: 'data', type: 'bytes[]', indexed: false },
+      { name: 'values', type: 'uint256[]', indexed: false }
     ]
   },
   {
