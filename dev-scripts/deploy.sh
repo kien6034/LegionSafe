@@ -17,8 +17,7 @@ forge script script/Deploy.s.sol:DeployLegionSafe \
   --rpc-url $RPC_URL \
   --broadcast \
   --verify \
-  --verifier blockscout \
-  --verifier-url $VERIFIER_URL \
+  --etherscan-api-key $ETHERSCAN_API_KEY \
   -vvvv
 
 echo ""
