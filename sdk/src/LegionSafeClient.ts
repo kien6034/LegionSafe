@@ -12,6 +12,7 @@ import type {
   SetSpenderWhitelistParams,
   SetSpendingLimitParams,
   SpendingLimitInfo,
+  GasOptions,
 } from "./types.js";
 
 /**
@@ -75,6 +76,7 @@ export class LegionSafeClient {
       args: [params.target, params.selector, params.authorized],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -125,6 +127,7 @@ export class LegionSafeClient {
       args: [params.target, params.data, params.value],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     const result = await this.waitForTransaction(hash);
@@ -166,6 +169,7 @@ export class LegionSafeClient {
       args: [targets, data, values],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     const result = await this.waitForTransaction(hash);
@@ -190,6 +194,7 @@ export class LegionSafeClient {
       args: [params.amount],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -198,9 +203,10 @@ export class LegionSafeClient {
   /**
    * Withdraw all ETH from the vault to the owner (owner only)
    *
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async withdrawAllETH(): Promise<TransactionResult> {
+  async withdrawAllETH(gasOptions?: GasOptions): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
@@ -208,6 +214,7 @@ export class LegionSafeClient {
       args: [],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -227,6 +234,7 @@ export class LegionSafeClient {
       args: [params.token, params.amount],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -236,9 +244,13 @@ export class LegionSafeClient {
    * Withdraw all ERC20 tokens from the vault to the owner (owner only)
    *
    * @param token Token address
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async withdrawAllERC20(token: Address): Promise<TransactionResult> {
+  async withdrawAllERC20(
+    token: Address,
+    gasOptions?: GasOptions
+  ): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
@@ -246,6 +258,7 @@ export class LegionSafeClient {
       args: [token],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -330,9 +343,13 @@ export class LegionSafeClient {
    * Transfer ownership to a new address (owner only)
    *
    * @param newOwner New owner address
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async transferOwnership(newOwner: Address): Promise<TransactionResult> {
+  async transferOwnership(
+    newOwner: Address,
+    gasOptions?: GasOptions
+  ): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
@@ -340,6 +357,7 @@ export class LegionSafeClient {
       args: [newOwner],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -349,9 +367,13 @@ export class LegionSafeClient {
    * Set a new operator address (owner only)
    *
    * @param newOperator New operator address
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async setOperator(newOperator: Address): Promise<TransactionResult> {
+  async setOperator(
+    newOperator: Address,
+    gasOptions?: GasOptions
+  ): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
@@ -359,6 +381,7 @@ export class LegionSafeClient {
       args: [newOperator],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -392,6 +415,7 @@ export class LegionSafeClient {
       args: [params.spender, params.whitelisted],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -416,9 +440,13 @@ export class LegionSafeClient {
    * Add a token to the spending tracking list (owner only)
    *
    * @param token Token address (use 0x0 for native token)
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async addTrackedToken(token: Address): Promise<TransactionResult> {
+  async addTrackedToken(
+    token: Address,
+    gasOptions?: GasOptions
+  ): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
@@ -426,6 +454,7 @@ export class LegionSafeClient {
       args: [token],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -435,9 +464,13 @@ export class LegionSafeClient {
    * Remove a token from the spending tracking list (owner only)
    *
    * @param token Token address to remove
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async removeTrackedToken(token: Address): Promise<TransactionResult> {
+  async removeTrackedToken(
+    token: Address,
+    gasOptions?: GasOptions
+  ): Promise<TransactionResult> {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
@@ -445,6 +478,7 @@ export class LegionSafeClient {
       args: [token],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);
@@ -495,6 +529,7 @@ export class LegionSafeClient {
       args: [params.token, params.limitPerWindow, params.windowDuration || 0n],
       account: this.getAccount(),
       chain: this.walletClient.chain,
+      ...((params.gasOptions as any) || {}),
     });
 
     return this.waitForTransaction(hash);

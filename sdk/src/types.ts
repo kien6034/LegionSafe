@@ -1,6 +1,20 @@
 import { Address, Hash, PublicClient, WalletClient } from "viem";
 
 /**
+ * Optional gas configuration for transactions
+ */
+export interface GasOptions {
+  /** Gas limit for the transaction */
+  gas?: bigint;
+  /** Gas price for legacy transactions (in wei) */
+  gasPrice?: bigint;
+  /** Max fee per gas for EIP-1559 transactions (in wei) */
+  maxFeePerGas?: bigint;
+  /** Max priority fee per gas for EIP-1559 transactions (in wei) */
+  maxPriorityFeePerGas?: bigint;
+}
+
+/**
  * Configuration for LegionSafe client
  */
 export interface LegionSafeConfig {
@@ -22,6 +36,8 @@ export interface AuthorizeCallParams {
   selector: `0x${string}`;
   /** Whether to authorize or revoke */
   authorized: boolean;
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**
@@ -34,6 +50,8 @@ export interface ManageCallParams {
   data: `0x${string}`;
   /** Native token value to send (in wei) */
   value: bigint;
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**
@@ -54,6 +72,8 @@ export interface BatchCallItem {
 export interface ManageBatchParams {
   /** Array of calls to execute */
   calls: BatchCallItem[];
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**
@@ -62,6 +82,8 @@ export interface ManageBatchParams {
 export interface WithdrawETHParams {
   /** Amount to withdraw in wei */
   amount: bigint;
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**
@@ -72,6 +94,8 @@ export interface WithdrawERC20Params {
   token: Address;
   /** Amount to withdraw (in token's smallest unit) */
   amount: bigint;
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**
@@ -110,6 +134,8 @@ export interface SetSpenderWhitelistParams {
   spender: Address;
   /** Whether to whitelist (true) or remove (false) */
   whitelisted: boolean;
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**
@@ -122,6 +148,8 @@ export interface SetSpendingLimitParams {
   limitPerWindow: bigint;
   /** Window duration in seconds (0 = use default 6 hours) */
   windowDuration?: bigint;
+  /** Optional gas configuration */
+  gasOptions?: GasOptions;
 }
 
 /**

@@ -12,6 +12,10 @@ export type {
   WithdrawERC20Params,
   TransactionResult,
   BalanceInfo,
+  GasOptions,
+  SetSpenderWhitelistParams,
+  SetSpendingLimitParams,
+  SpendingLimitInfo,
 } from './types.js';
 
 // ABIs
