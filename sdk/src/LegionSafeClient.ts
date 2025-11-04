@@ -1,4 +1,10 @@
-import { Address, Hash, formatUnits } from "viem";
+import {
+  Address,
+  Hash,
+  formatUnits,
+  encodeFunctionData,
+  decodeErrorResult,
+} from "viem";
 import { LEGION_SAFE_ABI, ERC20_ABI } from "./abis.js";
 import type {
   LegionSafeConfig,
@@ -178,6 +184,186 @@ export class LegionSafeClient {
       ...result,
       returnData: [], // Return data available in logs
     };
+  }
+
+  /**
+   * Force manageBatch transaction onchain even if simulation fails
+   * Useful for debugging - will execute the transaction and show the onchain error
+   *
+   * @param params Batch call parameters
+   * @returns Transaction result with status (may be 'reverted')
+   *
+   * @example
+   * ```typescript
+   * const result = await client.manageBatchForce({
+   *   calls: [
+   *     { target: tokenAddress, data: approveCalldata, value: 0n },
+   *     { target: routerAddress, data: swapCalldata, value: 0n }
+   *   ],
+   *   gasOptions: { gas: 800000n }
+   * });
+   * ```
+   */
+  async manageBatchForce(
+    params: ManageBatchParams
+  ): Promise<TransactionResult & { returnData: `0x${string}`[] }> {
+    const targets = params.calls.map((call) => call.target);
+    const data = params.calls.map((call) => call.data);
+    const values = params.calls.map((call) => call.value);
+
+    console.log("⚠️ FORCE MODE: Sending transaction without simulation");
+    console.log("Safe Address:", this.safeAddress);
+    console.log("Sender:", this.getAccount().address);
+    console.log("Targets:", targets);
+    console.log("Values:", values);
+    console.log("Gas Options:", params.gasOptions);
+
+    // Encode the function call manually
+    const calldata = encodeFunctionData({
+      abi: LEGION_SAFE_ABI,
+      functionName: "manageBatch",
+      args: [targets, data, values],
+    });
+
+    console.log("Encoded calldata length:", calldata.length);
+
+    try {
+      // Prepare transaction without simulation
+      const request = await this.walletClient.prepareTransactionRequest({
+        account: this.getAccount(),
+        to: this.safeAddress,
+        data: calldata,
+        chain: this.walletClient.chain,
+        gas: params.gasOptions?.gas,
+        gasPrice: params.gasOptions?.gasPrice,
+        maxFeePerGas: params.gasOptions?.maxFeePerGas,
+        maxPriorityFeePerGas: params.gasOptions?.maxPriorityFeePerGas,
+      } as any);
+
+      console.log("📤 Sending transaction...");
+      console.log("To:", request.to);
+      console.log("Gas:", request.gas);
+
+      // Send the transaction directly without simulation
+      const hash = await this.walletClient.sendTransaction(request as any);
+
+      console.log("✅ Transaction sent:", hash);
+      console.log("🔗 View on explorer");
+      console.log("⏳ Waiting for confirmation...");
+
+      // Wait for the transaction receipt
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: 120_000, // 2 minute timeout
+      });
+
+      console.log("\n📦 Receipt received");
+      console.log("Status:", receipt.status);
+      console.log("Block:", receipt.blockNumber);
+      console.log("Gas used:", receipt.gasUsed);
+
+      if (receipt.status === "reverted") {
+        console.error("\n❌ Transaction REVERTED onchain!");
+        await this.extractRevertReason(hash, receipt.blockNumber);
+      } else {
+        console.log("\n✅ Transaction SUCCEEDED onchain!");
+      }
+
+      return {
+        hash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed,
+        status: receipt.status,
+        returnData: [],
+      };
+    } catch (sendError: any) {
+      console.error("\n❌ Failed to send transaction");
+      console.error("Error:", sendError.message);
+      console.error("Stack:", sendError.stack);
+      throw sendError;
+    }
+  }
+
+  /**
+   * Extract revert reason from a failed transaction
+   * @private
+   */
+  private async extractRevertReason(hash: `0x${string}`, blockNumber: bigint) {
+    try {
+      console.log("🔍 Extracting revert reason...");
+
+      const tx = await this.publicClient.getTransaction({ hash });
+
+      // Replay the transaction at the previous block to get the error
+      await this.publicClient.call({
+        account: tx.from,
+        to: tx.to!,
+        data: tx.input,
+        blockNumber: blockNumber - 1n,
+      });
+    } catch (error: any) {
+      console.error("\n=== REVERT REASON ===");
+      console.error("Message:", error.message);
+      console.error("Short Message:", error.shortMessage);
+
+      const errorData = error.cause?.data || error.data;
+      if (errorData) {
+        const selector = errorData.slice(0, 10);
+        console.error("\nError Selector:", selector);
+        this.logKnownError(selector);
+
+        // Try to decode with ABI
+        try {
+          const decoded = decodeErrorResult({
+            abi: LEGION_SAFE_ABI,
+            data: errorData,
+          });
+          console.error("Decoded Error:", decoded);
+        } catch (decodeErr) {
+          console.error("Could not decode with ABI");
+        }
+      }
+
+      if (error.metaMessages) {
+        console.error("\nMeta Messages:");
+        error.metaMessages.forEach((msg: string) => console.error("  -", msg));
+      }
+    }
+  }
+
+  /**
+   * Log known error selectors with descriptions
+   * @private
+   */
+  private logKnownError(selector: string) {
+    const knownErrors: Record<string, string> = {
+      "0xa5fa8d2b":
+        "SpenderNotWhitelisted() - The spender address is not whitelisted for approvals",
+      "0x82b42900":
+        "Unauthorized() - Caller is not authorized (not owner or operator)",
+      "0xd47e0481": "CallNotAuthorized() - The function call is not authorized",
+      "0x3f2c5891": "InvalidAddress() - An invalid address was provided",
+      "0x750b219c": "InvalidAmount() - An invalid amount was provided",
+      "0x5ff9a827": "CallFailed(bytes) - The external call failed",
+      "0xc49eb42f": "WithdrawalFailed() - ETH withdrawal failed",
+      "0xc1ab6dc1": "InvalidInput() - Invalid input parameters",
+      "0x08c379a0": "Error(string) - Standard Solidity revert with message",
+      "0x4e487b71": "Panic(uint256) - Solidity panic error",
+    };
+
+    if (knownErrors[selector]) {
+      console.error("🔍 Decoded:", knownErrors[selector]);
+    } else {
+      console.error("❓ Unknown error selector");
+      console.error(
+        "🌐 Lookup at:",
+        `https://openchain.xyz/signatures?query=${selector}`
+      );
+      console.error(
+        "🌐 Or at:",
+        `https://www.4byte.directory/signatures/?bytes4_signature=${selector}`
+      );
+    }
   }
 
   /**
