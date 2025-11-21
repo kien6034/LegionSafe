@@ -32,6 +32,8 @@ interface ManageCallParams {
     data: `0x${string}`;
     /** Native token value to send (in wei) */
     value: bigint;
+    /** Optional gas limit for the transaction */
+    gasLimit?: bigint;
 }
 /**
  * Single call in a batch operation
@@ -50,6 +52,8 @@ interface BatchCallItem {
 interface ManageBatchParams {
     /** Array of calls to execute */
     calls: BatchCallItem[];
+    /** Optional gas limit for the transaction */
+    gasLimit?: bigint;
 }
 /**
  * Parameters for withdrawing ETH
@@ -78,7 +82,7 @@ interface TransactionResult {
     /** Gas used */
     gasUsed: bigint;
     /** Transaction status */
-    status: 'success' | 'reverted';
+    status: "success" | "reverted";
 }
 /**
  * Balance information

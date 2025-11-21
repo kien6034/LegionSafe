@@ -76,9 +76,7 @@ var LEGION_SAFE_ABI = [
   {
     type: "function",
     name: "withdrawETH",
-    inputs: [
-      { name: "amount", type: "uint256" }
-    ],
+    inputs: [{ name: "amount", type: "uint256" }],
     outputs: [],
     stateMutability: "nonpayable"
   },
@@ -102,9 +100,7 @@ var LEGION_SAFE_ABI = [
   {
     type: "function",
     name: "withdrawAllERC20",
-    inputs: [
-      { name: "token", type: "address" }
-    ],
+    inputs: [{ name: "token", type: "address" }],
     outputs: [],
     stateMutability: "nonpayable"
   },
@@ -409,7 +405,8 @@ var LegionSafeClient = class {
       functionName: "manageBatch",
       args: [targets, data, values],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      gas: params.gasLimit
     });
     const result = await this.waitForTransaction(hash);
     return {
