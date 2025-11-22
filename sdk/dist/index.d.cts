@@ -1,6 +1,19 @@
 import { Address, WalletClient, PublicClient, Hash } from 'viem';
 
 /**
+ * Optional gas configuration for transactions
+ */
+interface GasOptions {
+    /** Gas limit for the transaction */
+    gas?: bigint;
+    /** Gas price for legacy transactions (in wei) */
+    gasPrice?: bigint;
+    /** Max fee per gas for EIP-1559 transactions (in wei) */
+    maxFeePerGas?: bigint;
+    /** Max priority fee per gas for EIP-1559 transactions (in wei) */
+    maxPriorityFeePerGas?: bigint;
+}
+/**
  * Configuration for LegionSafe client
  */
 interface LegionSafeConfig {
@@ -21,6 +34,8 @@ interface AuthorizeCallParams {
     selector: `0x${string}`;
     /** Whether to authorize or revoke */
     authorized: boolean;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Parameters for executing a call via manage()
@@ -32,8 +47,8 @@ interface ManageCallParams {
     data: `0x${string}`;
     /** Native token value to send (in wei) */
     value: bigint;
-    /** Optional gas limit for the transaction */
-    gasLimit?: bigint;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Single call in a batch operation
@@ -52,8 +67,8 @@ interface BatchCallItem {
 interface ManageBatchParams {
     /** Array of calls to execute */
     calls: BatchCallItem[];
-    /** Optional gas limit for the transaction */
-    gasLimit?: bigint;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Parameters for withdrawing ETH
@@ -61,6 +76,8 @@ interface ManageBatchParams {
 interface WithdrawETHParams {
     /** Amount to withdraw in wei */
     amount: bigint;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Parameters for withdrawing ERC20 tokens
@@ -70,6 +87,8 @@ interface WithdrawERC20Params {
     token: Address;
     /** Amount to withdraw (in token's smallest unit) */
     amount: bigint;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Transaction result
@@ -105,6 +124,8 @@ interface SetSpenderWhitelistParams {
     spender: Address;
     /** Whether to whitelist (true) or remove (false) */
     whitelisted: boolean;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Parameters for setting a spending limit
@@ -116,6 +137,8 @@ interface SetSpendingLimitParams {
     limitPerWindow: bigint;
     /** Window duration in seconds (0 = use default 6 hours) */
     windowDuration?: bigint;
+    /** Optional gas configuration */
+    gasOptions?: GasOptions;
 }
 /**
  * Spending limit information
@@ -214,6 +237,37 @@ declare class LegionSafeClient {
         returnData: `0x${string}`[];
     }>;
     /**
+     * Force manageBatch transaction onchain even if simulation fails
+     * Useful for debugging - will execute the transaction and show the onchain error
+     *
+     * @param params Batch call parameters
+     * @returns Transaction result with status (may be 'reverted')
+     *
+     * @example
+     * ```typescript
+     * const result = await client.manageBatchForce({
+     *   calls: [
+     *     { target: tokenAddress, data: approveCalldata, value: 0n },
+     *     { target: routerAddress, data: swapCalldata, value: 0n }
+     *   ],
+     *   gasOptions: { gas: 800000n }
+     * });
+     * ```
+     */
+    manageBatchForce(params: ManageBatchParams): Promise<TransactionResult & {
+        returnData: `0x${string}`[];
+    }>;
+    /**
+     * Extract revert reason from a failed transaction
+     * @private
+     */
+    private extractRevertReason;
+    /**
+     * Log known error selectors with descriptions
+     * @private
+     */
+    private logKnownError;
+    /**
      * Withdraw ETH from the vault to the owner (owner only)
      *
      * @param params Withdrawal parameters
@@ -223,9 +277,10 @@ declare class LegionSafeClient {
     /**
      * Withdraw all ETH from the vault to the owner (owner only)
      *
+     * @param gasOptions Optional gas configuration
      * @returns Transaction result
      */
-    withdrawAllETH(): Promise<TransactionResult>;
+    withdrawAllETH(gasOptions?: GasOptions): Promise<TransactionResult>;
     /**
      * Withdraw ERC20 tokens from the vault to the owner (owner only)
      *
@@ -237,9 +292,10 @@ declare class LegionSafeClient {
      * Withdraw all ERC20 tokens from the vault to the owner (owner only)
      *
      * @param token Token address
+     * @param gasOptions Optional gas configuration
      * @returns Transaction result
      */
-    withdrawAllERC20(token: Address): Promise<TransactionResult>;
+    withdrawAllERC20(token: Address, gasOptions?: GasOptions): Promise<TransactionResult>;
     /**
      * Get the vault's native token balance
      *
@@ -265,16 +321,18 @@ declare class LegionSafeClient {
      * Transfer ownership to a new address (owner only)
      *
      * @param newOwner New owner address
+     * @param gasOptions Optional gas configuration
      * @returns Transaction result
      */
-    transferOwnership(newOwner: Address): Promise<TransactionResult>;
+    transferOwnership(newOwner: Address, gasOptions?: GasOptions): Promise<TransactionResult>;
     /**
      * Set a new operator address (owner only)
      *
      * @param newOperator New operator address
+     * @param gasOptions Optional gas configuration
      * @returns Transaction result
      */
-    setOperator(newOperator: Address): Promise<TransactionResult>;
+    setOperator(newOperator: Address, gasOptions?: GasOptions): Promise<TransactionResult>;
     /**
      * Whitelist or remove a spender address for ERC20 approve operations (owner only)
      *
@@ -301,16 +359,18 @@ declare class LegionSafeClient {
      * Add a token to the spending tracking list (owner only)
      *
      * @param token Token address (use 0x0 for native token)
+     * @param gasOptions Optional gas configuration
      * @returns Transaction result
      */
-    addTrackedToken(token: Address): Promise<TransactionResult>;
+    addTrackedToken(token: Address, gasOptions?: GasOptions): Promise<TransactionResult>;
     /**
      * Remove a token from the spending tracking list (owner only)
      *
      * @param token Token address to remove
+     * @param gasOptions Optional gas configuration
      * @returns Transaction result
      */
-    removeTrackedToken(token: Address): Promise<TransactionResult>;
+    removeTrackedToken(token: Address, gasOptions?: GasOptions): Promise<TransactionResult>;
     /**
      * Get the list of tracked tokens
      *
@@ -913,4 +973,4 @@ declare const KYBERSWAP_SELECTORS: {
     readonly META_AGGREGATION: "0xe21fd0e9";
 };
 
-export { type AuthorizeCallParams, type BalanceInfo, type BatchCallItem, CHAIN_IDS, ERC20_ABI, KYBERSWAP_API_BASE, KYBERSWAP_CHAIN_NAMES, KYBERSWAP_ROUTERS, KYBERSWAP_SELECTORS, type KyberSwapBuildRouteRequest, type KyberSwapBuildRouteResponse, KyberSwapClient, type KyberSwapParams, type KyberSwapRoute, type KyberSwapRouteSummary, LEGION_SAFE_ABI, LegionSafeClient, type LegionSafeConfig, type ManageBatchParams, type ManageCallParams, NATIVE_TOKEN_ADDRESS, type TransactionResult, type WithdrawERC20Params, type WithdrawETHParams, ZERO_ADDRESS, formatHash, getFunctionSelector, isValidAddress, isZeroAddress };
+export { type AuthorizeCallParams, type BalanceInfo, type BatchCallItem, CHAIN_IDS, ERC20_ABI, type GasOptions, KYBERSWAP_API_BASE, KYBERSWAP_CHAIN_NAMES, KYBERSWAP_ROUTERS, KYBERSWAP_SELECTORS, type KyberSwapBuildRouteRequest, type KyberSwapBuildRouteResponse, KyberSwapClient, type KyberSwapParams, type KyberSwapRoute, type KyberSwapRouteSummary, LEGION_SAFE_ABI, LegionSafeClient, type LegionSafeConfig, type ManageBatchParams, type ManageCallParams, NATIVE_TOKEN_ADDRESS, type SetSpenderWhitelistParams, type SetSpendingLimitParams, type SpendingLimitInfo, type TransactionResult, type WithdrawERC20Params, type WithdrawETHParams, ZERO_ADDRESS, formatHash, getFunctionSelector, isValidAddress, isZeroAddress };

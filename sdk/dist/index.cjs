@@ -330,7 +330,8 @@ var LegionSafeClient = class {
       functionName: "setCallAuthorization",
       args: [params.target, params.selector, params.authorized],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...params.gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -372,7 +373,8 @@ var LegionSafeClient = class {
       functionName: "manage",
       args: [params.target, params.data, params.value],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...params.gasOptions || {}
     });
     const result = await this.waitForTransaction(hash);
     return {
@@ -408,7 +410,7 @@ var LegionSafeClient = class {
       args: [targets, data, values],
       account: this.getAccount(),
       chain: this.walletClient.chain,
-      gas: params.gasLimit
+      ...params.gasOptions || {}
     });
     const result = await this.waitForTransaction(hash);
     return {
@@ -416,6 +418,157 @@ var LegionSafeClient = class {
       returnData: []
       // Return data available in logs
     };
+  }
+  /**
+   * Force manageBatch transaction onchain even if simulation fails
+   * Useful for debugging - will execute the transaction and show the onchain error
+   *
+   * @param params Batch call parameters
+   * @returns Transaction result with status (may be 'reverted')
+   *
+   * @example
+   * ```typescript
+   * const result = await client.manageBatchForce({
+   *   calls: [
+   *     { target: tokenAddress, data: approveCalldata, value: 0n },
+   *     { target: routerAddress, data: swapCalldata, value: 0n }
+   *   ],
+   *   gasOptions: { gas: 800000n }
+   * });
+   * ```
+   */
+  async manageBatchForce(params) {
+    const targets = params.calls.map((call) => call.target);
+    const data = params.calls.map((call) => call.data);
+    const values = params.calls.map((call) => call.value);
+    console.log("\u26A0\uFE0F FORCE MODE: Sending transaction without simulation");
+    console.log("Safe Address:", this.safeAddress);
+    console.log("Sender:", this.getAccount().address);
+    console.log("Targets:", targets);
+    console.log("Values:", values);
+    console.log("Gas Options:", params.gasOptions);
+    const calldata = viem.encodeFunctionData({
+      abi: LEGION_SAFE_ABI,
+      functionName: "manageBatch",
+      args: [targets, data, values]
+    });
+    console.log("Encoded calldata length:", calldata.length);
+    try {
+      const request = await this.walletClient.prepareTransactionRequest({
+        account: this.getAccount(),
+        to: this.safeAddress,
+        data: calldata,
+        chain: this.walletClient.chain,
+        gas: params.gasOptions?.gas,
+        gasPrice: params.gasOptions?.gasPrice,
+        maxFeePerGas: params.gasOptions?.maxFeePerGas,
+        maxPriorityFeePerGas: params.gasOptions?.maxPriorityFeePerGas
+      });
+      console.log("\u{1F4E4} Sending transaction...");
+      console.log("To:", request.to);
+      console.log("Gas:", request.gas);
+      const hash = await this.walletClient.sendTransaction(request);
+      console.log("\u2705 Transaction sent:", hash);
+      console.log("\u{1F517} View on explorer");
+      console.log("\u23F3 Waiting for confirmation...");
+      const receipt = await this.publicClient.waitForTransactionReceipt({
+        hash,
+        timeout: 12e4
+        // 2 minute timeout
+      });
+      console.log("\n\u{1F4E6} Receipt received");
+      console.log("Status:", receipt.status);
+      console.log("Block:", receipt.blockNumber);
+      console.log("Gas used:", receipt.gasUsed);
+      if (receipt.status === "reverted") {
+        console.error("\n\u274C Transaction REVERTED onchain!");
+        await this.extractRevertReason(hash, receipt.blockNumber);
+      } else {
+        console.log("\n\u2705 Transaction SUCCEEDED onchain!");
+      }
+      return {
+        hash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed,
+        status: receipt.status,
+        returnData: []
+      };
+    } catch (sendError) {
+      console.error("\n\u274C Failed to send transaction");
+      console.error("Error:", sendError.message);
+      console.error("Stack:", sendError.stack);
+      throw sendError;
+    }
+  }
+  /**
+   * Extract revert reason from a failed transaction
+   * @private
+   */
+  async extractRevertReason(hash, blockNumber) {
+    try {
+      console.log("\u{1F50D} Extracting revert reason...");
+      const tx = await this.publicClient.getTransaction({ hash });
+      await this.publicClient.call({
+        account: tx.from,
+        to: tx.to,
+        data: tx.input,
+        blockNumber: blockNumber - 1n
+      });
+    } catch (error) {
+      console.error("\n=== REVERT REASON ===");
+      console.error("Message:", error.message);
+      console.error("Short Message:", error.shortMessage);
+      const errorData = error.cause?.data || error.data;
+      if (errorData) {
+        const selector = errorData.slice(0, 10);
+        console.error("\nError Selector:", selector);
+        this.logKnownError(selector);
+        try {
+          const decoded = viem.decodeErrorResult({
+            abi: LEGION_SAFE_ABI,
+            data: errorData
+          });
+          console.error("Decoded Error:", decoded);
+        } catch (decodeErr) {
+          console.error("Could not decode with ABI");
+        }
+      }
+      if (error.metaMessages) {
+        console.error("\nMeta Messages:");
+        error.metaMessages.forEach((msg) => console.error("  -", msg));
+      }
+    }
+  }
+  /**
+   * Log known error selectors with descriptions
+   * @private
+   */
+  logKnownError(selector) {
+    const knownErrors = {
+      "0xa5fa8d2b": "SpenderNotWhitelisted() - The spender address is not whitelisted for approvals",
+      "0x82b42900": "Unauthorized() - Caller is not authorized (not owner or operator)",
+      "0xd47e0481": "CallNotAuthorized() - The function call is not authorized",
+      "0x3f2c5891": "InvalidAddress() - An invalid address was provided",
+      "0x750b219c": "InvalidAmount() - An invalid amount was provided",
+      "0x5ff9a827": "CallFailed(bytes) - The external call failed",
+      "0xc49eb42f": "WithdrawalFailed() - ETH withdrawal failed",
+      "0xc1ab6dc1": "InvalidInput() - Invalid input parameters",
+      "0x08c379a0": "Error(string) - Standard Solidity revert with message",
+      "0x4e487b71": "Panic(uint256) - Solidity panic error"
+    };
+    if (knownErrors[selector]) {
+      console.error("\u{1F50D} Decoded:", knownErrors[selector]);
+    } else {
+      console.error("\u2753 Unknown error selector");
+      console.error(
+        "\u{1F310} Lookup at:",
+        `https://openchain.xyz/signatures?query=${selector}`
+      );
+      console.error(
+        "\u{1F310} Or at:",
+        `https://www.4byte.directory/signatures/?bytes4_signature=${selector}`
+      );
+    }
   }
   /**
    * Withdraw ETH from the vault to the owner (owner only)
@@ -430,23 +583,26 @@ var LegionSafeClient = class {
       functionName: "withdrawETH",
       args: [params.amount],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...params.gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
   /**
    * Withdraw all ETH from the vault to the owner (owner only)
    *
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async withdrawAllETH() {
+  async withdrawAllETH(gasOptions) {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: "withdrawAllETH",
       args: [],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -463,7 +619,8 @@ var LegionSafeClient = class {
       functionName: "withdrawERC20",
       args: [params.token, params.amount],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...params.gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -471,16 +628,18 @@ var LegionSafeClient = class {
    * Withdraw all ERC20 tokens from the vault to the owner (owner only)
    *
    * @param token Token address
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async withdrawAllERC20(token) {
+  async withdrawAllERC20(token, gasOptions) {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: "withdrawAllERC20",
       args: [token],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -557,16 +716,18 @@ var LegionSafeClient = class {
    * Transfer ownership to a new address (owner only)
    *
    * @param newOwner New owner address
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async transferOwnership(newOwner) {
+  async transferOwnership(newOwner, gasOptions) {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: "transferOwnership",
       args: [newOwner],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -574,16 +735,18 @@ var LegionSafeClient = class {
    * Set a new operator address (owner only)
    *
    * @param newOperator New operator address
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async setOperator(newOperator) {
+  async setOperator(newOperator, gasOptions) {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: "setOperator",
       args: [newOperator],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -611,7 +774,8 @@ var LegionSafeClient = class {
       functionName: "setSpenderWhitelist",
       args: [params.spender, params.whitelisted],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...params.gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -633,16 +797,18 @@ var LegionSafeClient = class {
    * Add a token to the spending tracking list (owner only)
    *
    * @param token Token address (use 0x0 for native token)
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async addTrackedToken(token) {
+  async addTrackedToken(token, gasOptions) {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: "addTrackedToken",
       args: [token],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -650,16 +816,18 @@ var LegionSafeClient = class {
    * Remove a token from the spending tracking list (owner only)
    *
    * @param token Token address to remove
+   * @param gasOptions Optional gas configuration
    * @returns Transaction result
    */
-  async removeTrackedToken(token) {
+  async removeTrackedToken(token, gasOptions) {
     const hash = await this.walletClient.writeContract({
       address: this.safeAddress,
       abi: LEGION_SAFE_ABI,
       functionName: "removeTrackedToken",
       args: [token],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }
@@ -704,7 +872,8 @@ var LegionSafeClient = class {
       functionName: "setSpendingLimit",
       args: [params.token, params.limitPerWindow, params.windowDuration || 0n],
       account: this.getAccount(),
-      chain: this.walletClient.chain
+      chain: this.walletClient.chain,
+      ...params.gasOptions || {}
     });
     return this.waitForTransaction(hash);
   }

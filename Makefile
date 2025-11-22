@@ -120,3 +120,16 @@ help-fork:
 	@echo ""
 	@echo "Environment Variables:"
 	@echo "  BSC_RPC                    - BSC RPC URL (default: https://bsc-dataseed1.binance.org)"
+
+
+# Debug manageBatch with specific data
+.PHONY: test-debug-managebatch
+test-debug-managebatch:
+	@echo "Running manageBatch debug test on BSC fork..."
+	forge test --match-contract LegionSafe_ManageBatch_Debug --match-test test_manageBatch_debug --fork-url $(BSC_RPC) -vvvv
+
+.PHONY: test-debug-managebatch-unlimited
+test-debug-managebatch-unlimited:
+	@echo "Running manageBatch debug test with unlimited gas on BSC fork..."
+	forge test --match-contract LegionSafe_ManageBatch_Debug --match-test test_manageBatch_unlimited_gas --fork-url $(BSC_RPC) -vvvv
+
